@@ -27,6 +27,8 @@ WEB_PASSWORD = os.getenv('WEB_PASSWORD')
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'votre_secret_key_aleatoire_ici')
+from flask_cors import CORS
+CORS(app, origins=["https://Noallo312.github.io"], supports_credentials=True)
 
 def login_required(f):
     @wraps(f)
