@@ -2050,6 +2050,59 @@ def restore_order(order_id):
         print("Erreur renvoi notifications:", e)
     return jsonify({'success': True})
 
+# ── HUB USERS (comptes dashboard) ────────────────────────────────────────────
+import json, hashlib
+
+HUB_USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hub_users.json')
+
+def hub_load_users():
+    if not os.path.exists(HUB_USERS_FILE):
+        default = [{'username': 'admin', 'password': hashlib.sha256('Jamal2laleague'.encode()).hexdigest(), 'role': 'admin', 'perms': ['overview','b4u-orders','shop-orders','b4u-users','shop-users','shop-stock','actions','settings']}]
+        with open(HUB_USERS_FILE, 'w') as f: json.dump(default, f)
+        return default
+    with open(HUB_USERS_FILE, 'r') as f: return json.load(f)
+
+def hub_save_users(users):
+    with open(HUB_USERS_FILE, 'w') as f: json.dump(users, f)
+
+@app.route('/api/hub/login', methods=['POST'])
+def hub_login():
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = hashlib.sha256(data.get('password', '').encode()).hexdigest()
+    users = hub_load_users()
+    user = next((u for u in users if u['username'] == username and u['password'] == password), None)
+    if not user: return jsonify({'error': 'Identifiants incorrects'}), 401
+    return jsonify({'username': user['username'], 'role': user['role'], 'perms': user['perms']})
+
+@app.route('/api/hub/users', methods=['GET'])
+def hub_get_users():
+    if not check_token(): return jsonify({'error': 'Unauthorized'}), 401
+    users = hub_load_users()
+    return jsonify([{'username': u['username'], 'role': u['role'], 'perms': u['perms']} for u in users])
+
+@app.route('/api/hub/users', methods=['POST'])
+def hub_create_user():
+    if not check_token(): return jsonify({'error': 'Unauthorized'}), 401
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    perms = data.get('perms', [])
+    if not username or not password: return jsonify({'error': 'Champs manquants'}), 400
+    users = hub_load_users()
+    if any(u['username'] == username for u in users): return jsonify({'error': 'Existe déjà'}), 400
+    users.append({'username': username, 'password': hashlib.sha256(password.encode()).hexdigest(), 'role': 'user', 'perms': perms})
+    hub_save_users(users)
+    return jsonify({'success': True})
+
+@app.route('/api/hub/users/<username>', methods=['DELETE'])
+def hub_delete_user(username):
+    if not check_token(): return jsonify({'error': 'Unauthorized'}), 401
+    users = hub_load_users()
+    users = [u for u in users if u['username'] != username or u['role'] == 'admin']
+    hub_save_users(users)
+    return jsonify({'success': True})
+
 @app.route('/')
 def index():
     return redirect('/dashboard')
