@@ -1591,6 +1591,85 @@ def users_page():
 def manager_page():
     return render_template_string(HTML_REACT_MANAGER)
 
+# ── API TOKEN (pour dashboard externe) ───────────────────────────────────────
+
+def check_token():
+    token = request.args.get('token') or request.headers.get('X-Auth-Token')
+    return token == WEB_PASSWORD
+
+@app.route('/api/token/dashboard')
+def api_token_dashboard():
+    if not check_token(): return jsonify({'error': 'Unauthorized'}), 401
+    session = SessionLocal()
+    try:
+        orders_q = session.query(Order).order_by(Order.id.desc()).all()
+        orders = [{'id': o.id, 'username': o.username, 'service': o.service,
+            'plan': o.plan, 'price': o.price, 'first_name': o.first_name,
+            'last_name': o.last_name, 'email': o.email,
+            'payment_method': o.payment_method, 'status': o.status}
+            for o in orders_q]
+        total = session.query(func.count(Order.id)).scalar()
+        pending = session.query(func.count(Order.id)).filter(Order.status == 'en_attente').scalar()
+        cumul = session.get(CumulativeStats, 1)
+        return jsonify({'orders': orders, 'stats': {
+            'total_orders': total, 'pending_orders': pending,
+            'revenue': cumul.total_revenue if cumul else 0,
+            'profit': cumul.total_profit if cumul else 0}})
+    finally:
+        session.close()
+
+@app.route('/api/token/users')
+def api_token_users():
+    if not check_token(): return jsonify({'error': 'Unauthorized'}), 401
+    session = SessionLocal()
+    try:
+        users = [{'user_id': u.user_id, 'username': u.username or 'N/A',
+            'first_name': u.first_name or '', 'last_name': u.last_name or '',
+            'last_activity': u.last_activity, 'total_orders': u.total_orders}
+            for u in session.query(User).order_by(User.last_activity.desc()).all()]
+        return jsonify({'users': users})
+    finally:
+        session.close()
+
+@app.route('/api/token/order/<int:order_id>/take', methods=['POST'])
+def api_token_take(order_id):
+    if not check_token(): return jsonify({'error': 'Unauthorized'}), 401
+    session = SessionLocal()
+    try:
+        o = session.get(Order, order_id)
+        if not o: return jsonify({'error': 'Not found'}), 404
+        o.status = 'en_cours'
+        session.commit()
+        return jsonify({'success': True})
+    finally:
+        session.close()
+
+@app.route('/api/token/order/<int:order_id>/complete', methods=['POST'])
+def api_token_complete(order_id):
+    if not check_token(): return jsonify({'error': 'Unauthorized'}), 401
+    session = SessionLocal()
+    try:
+        o = session.get(Order, order_id)
+        if not o: return jsonify({'error': 'Not found'}), 404
+        o.status = 'terminee'
+        session.commit()
+        return jsonify({'success': True})
+    finally:
+        session.close()
+
+@app.route('/api/token/order/<int:order_id>/cancel', methods=['POST'])
+def api_token_cancel(order_id):
+    if not check_token(): return jsonify({'error': 'Unauthorized'}), 401
+    session = SessionLocal()
+    try:
+        o = session.get(Order, order_id)
+        if not o: return jsonify({'error': 'Not found'}), 404
+        o.status = 'annulee'
+        session.commit()
+        return jsonify({'success': True})
+    finally:
+        session.close()
+
 @app.route('/api/reload_services', methods=['POST'])
 @login_required
 def api_reload_services():
