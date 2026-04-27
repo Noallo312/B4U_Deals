@@ -1082,15 +1082,151 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         plan_key = "_".join(parts[1:])
         service = SERVICES_CONFIG_IN_MEMORY[service_key]
         plan = service['plans'][plan_key]
-        user_states[user_id] = {'service': service_key, 'plan': plan_key, 'service_name': service['name'], 'plan_label': plan['label'], 'price': plan['price'], 'cost': plan['cost'], 'step': 'waiting_form'}
-        if service_key == 'deezer':
-            await query.message.reply_text(f"✅ *Commande confirmée*\n\nService: {service['name']}\nPlan: {plan['label']}\nPrix: {plan['price']}€\n\n📝 Envoie ton nom, prénom et mail (chacun sur une ligne)", parse_mode='Markdown')
-            user_states[user_id]['step'] = 'waiting_deezer_form'
+        user_states[user_id] = {
+            'service': service_key, 'plan': plan_key,
+            'service_name': service['name'], 'plan_label': plan['label'],
+            'price': plan['price'], 'cost': plan['cost'],
+            'step': 'waiting_payment'
+        }
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("💳 PayPal", callback_data=f"pay_paypal_{service_key}_{plan_key}")],
+            [InlineKeyboardButton("₿ Bitcoin (BTC)", callback_data=f"pay_btc_{service_key}_{plan_key}")],
+            [InlineKeyboardButton("⟠ Ethereum (ETH)", callback_data=f"pay_eth_{service_key}_{plan_key}")],
+            [InlineKeyboardButton("Ł Litecoin (LTC)", callback_data=f"pay_ltc_{service_key}_{plan_key}")],
+            [InlineKeyboardButton("⬅️ Retour", callback_data=f"service_{service_key}")]
+        ])
+        await query.message.reply_text(
+            f"✅ *{plan['label']} — {plan['price']}€*\n\n💳 Choisis ton mode de paiement :",
+            parse_mode='Markdown', reply_markup=keyboard
+        )
+        return
+
+    # Gestion du paiement choisi
+    if data.startswith("pay_"):
+        parts = data.split("_")
+        method = parts[1].capitalize()  # paypal, virement, revolut
+        service_key = parts[2]
+        plan_key = "_".join(parts[3:])
+        state = user_states.get(user_id)
+        if not state:
+            await query.message.reply_text("❌ Session expirée. Recommence depuis /start.")
             return
-        else:
-            form_text = (f"✅ *{plan['label']} - {plan['price']}€*\n\n📝 *Formulaire de commande*\n\nEnvoie-moi les informations suivantes (une par ligne) :\n\n1️⃣ Nom\n2️⃣ Prénom\n3️⃣ Adresse email\n4️⃣ Moyen de paiement (PayPal / Virement / Revolut)\n\n📌 Exemple :\nDupont\nJean\njean.dupont@email.com\nPayPal")
-            await query.message.reply_text(form_text, parse_mode='Markdown')
+
+        # Créer la commande en DB
+        session = SessionLocal()
+        try:
+            order = Order(
+                user_id=user_id,
+                username=username,
+                service=state['service_name'],
+                plan=state['plan_label'],
+                price=state['price'],
+                cost=state['cost'],
+                first_name=first_name,
+                last_name=last_name,
+                email=None,
+                payment_method=method,
+                timestamp=datetime.now().isoformat(),
+                status='en_attente'
+            )
+            session.add(order)
+            session.flush()
+            order_id = order.id
+            user_obj = session.get(User, user_id)
+            if user_obj:
+                user_obj.total_orders = (user_obj.total_orders or 0) + 1
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(f"Erreur création commande: {e}")
+            await query.message.reply_text("❌ Erreur lors de la création de la commande.")
+            session.close()
             return
+        finally:
+            session.close()
+
+        # Instructions selon mode de paiement
+        PAYPAL_EMAIL = os.getenv('PAYPAL_EMAIL', 'votre@paypal.com')
+        BTC_WALLET = os.getenv('BTC_WALLET', '1A1zP1eP5QGefi2DMPTfTL5SLmv7Divf4Na')
+        ETH_WALLET = os.getenv('ETH_WALLET', '0x0000000000000000000000000000000000000000')
+        LTC_WALLET = os.getenv('LTC_WALLET', 'LZ1DPGnXnHMHDqBqDeBiYpNqJRB3TDsGpB')
+
+        # Récupération des taux crypto en temps réel
+        try:
+            import requests as _req
+            resp = _req.get(
+                "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,litecoin&vs_currencies=eur",
+                timeout=5
+            )
+            prices = resp.json()
+            btc_rate = prices['bitcoin']['eur']
+            eth_rate = prices['ethereum']['eur']
+            ltc_rate = prices['litecoin']['eur']
+        except Exception:
+            btc_rate, eth_rate, ltc_rate = 85000, 2000, 90
+
+        price_eur = state['price']
+
+        if method == 'Paypal':
+            instructions = (
+                f"💳 *Paiement PayPal*\n\n"
+                f"📦 {state['service_name']}\n"
+                f"📋 {state['plan_label']}\n"
+                f"💰 {price_eur}€\n"
+                f"📌 Commande #{order_id}\n\n"
+                f"1️⃣ Connecte-toi à PayPal\n"
+                f"2️⃣ Envoie *{price_eur}€* à : `{PAYPAL_EMAIL}`\n"
+                f"3️⃣ ⚠️ ENVOIE EN TANT QU'AMI / PROCHE\n"
+                f"4️⃣ Note : `{user_id}-{order_id}`\n"
+                f"5️⃣ Envoie la capture ici 📸\n\n"
+                f"⏱️ Livraison dès validation admin"
+            )
+        elif method == 'Btc':
+            amt = round(price_eur / btc_rate, 8)
+            instructions = (
+                f"₿ *Paiement Bitcoin (BTC)*\n\n"
+                f"📦 {state['service_name']}\n"
+                f"📋 {state['plan_label']}\n"
+                f"💰 {price_eur}€ = `{amt}` BTC\n"
+                f"📈 Taux : 1 BTC = {btc_rate:,.0f}€\n"
+                f"📌 Commande #{order_id}\n\n"
+                f"Adresse BTC :\n`{BTC_WALLET}`\n\n"
+                f"1️⃣ Envoie exactement `{amt}` BTC\n"
+                f"2️⃣ Envoie la capture ici 📸\n\n"
+                f"⚠️ Livraison après validation admin"
+            )
+        elif method == 'Eth':
+            amt = round(price_eur / eth_rate, 6)
+            instructions = (
+                f"⟠ *Paiement Ethereum (ETH)*\n\n"
+                f"📦 {state['service_name']}\n"
+                f"📋 {state['plan_label']}\n"
+                f"💰 {price_eur}€ = `{amt}` ETH\n"
+                f"📈 Taux : 1 ETH = {eth_rate:,.0f}€\n"
+                f"📌 Commande #{order_id}\n\n"
+                f"Adresse ETH :\n`{ETH_WALLET}`\n\n"
+                f"1️⃣ Envoie exactement `{amt}` ETH\n"
+                f"2️⃣ Envoie la capture ici 📸\n\n"
+                f"⚠️ Livraison après validation admin"
+            )
+        else:  # Ltc
+            amt = round(price_eur / ltc_rate, 6)
+            instructions = (
+                f"Ł *Paiement Litecoin (LTC)*\n\n"
+                f"📦 {state['service_name']}\n"
+                f"📋 {state['plan_label']}\n"
+                f"💰 {price_eur}€ = `{amt}` LTC\n"
+                f"📈 Taux : 1 LTC = {ltc_rate:,.0f}€\n"
+                f"📌 Commande #{order_id}\n\n"
+                f"Adresse LTC :\n`{LTC_WALLET}`\n\n"
+                f"1️⃣ Envoie exactement `{amt}` LTC\n"
+                f"2️⃣ Envoie la capture ici 📸\n\n"
+                f"⚠️ Livraison après validation admin"
+            )
+
+        await query.message.reply_text(instructions, parse_mode='Markdown')
+        user_states.pop(user_id, None)
+        return
 
     # Retour au menu
     if data == "back_to_menu":
@@ -1326,237 +1462,88 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    username = update.message.from_user.username or f"User_{user_id}"
-    first_name = update.message.from_user.first_name or "Utilisateur"
-    last_name = update.message.from_user.last_name or ""
-    update_user_activity(user_id, username, first_name, last_name)
-    
-    if user_id not in user_states:
-        await update.message.reply_text("⚠️ Utilise /start pour commencer une commande")
+    await update.message.reply_text("⚠️ Utilise /start pour commencer une commande.")
+
+
+async def handle_payment_proof(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Reçoit une photo du client → la transfère aux admins avec recap + boutons."""
+    if not update.message.photo:
         return
-    
-    state = user_states[user_id]
-    text = update.message.text.strip()
-    
-    # Traitement formulaire Deezer (3 lignes: nom, prénom, email)
-    if state.get('step') == 'waiting_deezer_form':
-        lines = text.split('\n')
-        if len(lines) < 3:
-            await update.message.reply_text("❌ Format incorrect. Envoie 3 lignes:\n1. Nom\n2. Prénom\n3. Email")
-            return
-        
-        last_name_input = lines[0].strip()
-        first_name_input = lines[1].strip()
-        email = lines[2].strip()
-        
-        # Créer la commande dans la DB
-        session = SessionLocal()
-        try:
-            order = Order(
-                user_id=user_id,
-                username=username,
-                service=state['service_name'],
-                plan=state['plan_label'],
-                price=state['price'],
-                cost=state['cost'],
-                first_name=first_name_input,
-                last_name=last_name_input,
-                email=email,
-                payment_method=None,
-                timestamp=datetime.now().isoformat(),
-                status='en_attente'
-            )
-            session.add(order)
-            session.flush()
-            order_id = order.id
-            
-            # Mettre à jour le compteur de commandes de l'utilisateur
-            user = session.get(User, user_id)
-            if user:
-                user.total_orders = (user.total_orders or 0) + 1
-            
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"Erreur création commande Deezer: {e}")
-            await update.message.reply_text("❌ Erreur lors de la création de la commande")
-            session.close()
-            return
-        finally:
-            session.close()
-        
-        # Confirmation client
+    user = update.effective_user
+    user_id = user.id
+    username = user.username or f"User_{user_id}"
+
+    session = SessionLocal()
+    try:
+        pending_orders = session.query(Order).filter(
+            Order.user_id == user_id,
+            Order.status == 'en_attente'
+        ).order_by(Order.id.desc()).all()
+    finally:
+        session.close()
+
+    if not pending_orders:
         await update.message.reply_text(
-            f"✅ *Commande #{order_id} enregistrée !*\n\n"
-            f"📦 {state['service_name']}\n"
-            f"📋 {state['plan_label']}\n"
-            f"💰 {state['price']}€\n\n"
-            f"👤 {first_name_input} {last_name_input}\n"
-            f"📧 {email}\n\n"
-            f"⏳ Un admin va te contacter rapidement !",
-            parse_mode='Markdown'
+            "⚠️ Aucune commande en attente trouvée.\n"
+            "Commence une commande avec /start avant d'envoyer ta preuve."
         )
-        
-        # Notification admins
-        admin_text = (
-            f"🔔 *NOUVELLE COMMANDE #{order_id}*\n\n"
-            f"👤 @{username}\n"
-            f"📦 {state['service_name']}\n"
-            f"📋 {state['plan_label']}\n"
-            f"💰 {state['price']}€\n"
-            f"💵 Coût: {state['cost']}€\n"
-            f"📈 Bénéf: {state['price'] - state['cost']}€\n\n"
-            f"👤 {first_name_input} {last_name_input}\n"
-            f"📧 {email}\n\n"
-            f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-        )
-        
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("✋ Prendre", callback_data=f"admin_take_{order_id}"),
-                InlineKeyboardButton("❌ Annuler", callback_data=f"admin_cancel_{order_id}")
-            ]
-        ])
-        
-        session = SessionLocal()
-        try:
-            for admin_id in ADMIN_IDS:
-                try:
-                    msg = await context.bot.send_message(
-                        chat_id=admin_id,
-                        text=admin_text,
-                        parse_mode='Markdown',
-                        reply_markup=keyboard
-                    )
-                    om = OrderMessage(order_id=order_id, admin_id=admin_id, message_id=msg.message_id)
-                    session.add(om)
-                except Exception as e:
-                    print(f"Erreur envoi admin {admin_id}: {e}")
-            session.commit()
-        except Exception as e:
-            session.rollback()
-        finally:
-            session.close()
-        
-        del user_states[user_id]
-        return
-    
-    # Traitement formulaire standard (4 lignes: nom, prénom, email, paiement)
-    if state.get('step') == 'waiting_form':
-        lines = text.split('\n')
-        if len(lines) < 4:
-            await update.message.reply_text(
-                "❌ Format incorrect. Envoie 4 lignes:\n"
-                "1. Nom\n"
-                "2. Prénom\n"
-                "3. Email\n"
-                "4. Moyen de paiement (PayPal/Virement/Revolut)"
-            )
-            return
-        
-        last_name_input = lines[0].strip()
-        first_name_input = lines[1].strip()
-        email = lines[2].strip()
-        payment_method = lines[3].strip()
-        
-        # Créer la commande dans la DB
-        session = SessionLocal()
-        try:
-            order = Order(
-                user_id=user_id,
-                username=username,
-                service=state['service_name'],
-                plan=state['plan_label'],
-                price=state['price'],
-                cost=state['cost'],
-                first_name=first_name_input,
-                last_name=last_name_input,
-                email=email,
-                payment_method=payment_method,
-                timestamp=datetime.now().isoformat(),
-                status='en_attente'
-            )
-            session.add(order)
-            session.flush()
-            order_id = order.id
-            
-            # Mettre à jour le compteur de commandes de l'utilisateur
-            user = session.get(User, user_id)
-            if user:
-                user.total_orders = (user.total_orders or 0) + 1
-            
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"Erreur création commande: {e}")
-            await update.message.reply_text("❌ Erreur lors de la création de la commande")
-            session.close()
-            return
-        finally:
-            session.close()
-        
-        # Confirmation client
-        await update.message.reply_text(
-            f"✅ *Commande #{order_id} enregistrée !*\n\n"
-            f"📦 {state['service_name']}\n"
-            f"📋 {state['plan_label']}\n"
-            f"💰 {state['price']}€\n\n"
-            f"👤 {first_name_input} {last_name_input}\n"
-            f"📧 {email}\n"
-            f"💳 {payment_method}\n\n"
-            f"⏳ Un admin va te contacter rapidement !",
-            parse_mode='Markdown'
-        )
-        
-        # Notification admins
-        admin_text = (
-            f"🔔 *NOUVELLE COMMANDE #{order_id}*\n\n"
-            f"👤 @{username}\n"
-            f"📦 {state['service_name']}\n"
-            f"📋 {state['plan_label']}\n"
-            f"💰 {state['price']}€\n"
-            f"💵 Coût: {state['cost']}€\n"
-            f"📈 Bénéf: {state['price'] - state['cost']}€\n\n"
-            f"👤 {first_name_input} {last_name_input}\n"
-            f"📧 {email}\n"
-            f"💳 {payment_method}\n\n"
-            f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-        )
-        
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("✋ Prendre", callback_data=f"admin_take_{order_id}"),
-                InlineKeyboardButton("❌ Annuler", callback_data=f"admin_cancel_{order_id}")
-            ]
-        ])
-        
-        session = SessionLocal()
-        try:
-            for admin_id in ADMIN_IDS:
-                try:
-                    msg = await context.bot.send_message(
-                        chat_id=admin_id,
-                        text=admin_text,
-                        parse_mode='Markdown',
-                        reply_markup=keyboard
-                    )
-                    om = OrderMessage(order_id=order_id, admin_id=admin_id, message_id=msg.message_id)
-                    session.add(om)
-                except Exception as e:
-                    print(f"Erreur envoi admin {admin_id}: {e}")
-            session.commit()
-        except Exception as e:
-            session.rollback()
-        finally:
-            session.close()
-        
-        del user_states[user_id]
         return
 
-# ========== ROUTES FLASK - NE METTEZ PAS LES HTML TEMPLATES ICI ==========
-# Les templates HTML sont dans le fichier d'origine (HTML_LOGIN, HTML_DASHBOARD, etc.)
-# Je ne les reproduis pas ici pour économiser de l'espace
+    order = pending_orders[0]
+    recap = (
+        f"📋 *PREUVE DE PAIEMENT REÇUE*\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"👤 Client : @{username}\n"
+        f"🆔 ID : {user_id}\n\n"
+        f"📦 {order.service}\n"
+        f"📋 {order.plan}\n"
+        f"💰 {order.price}€\n"
+        f"💳 {order.payment_method or 'N/A'}\n"
+        f"📌 Commande #{order.id}\n"
+        f"━━━━━━━━━━━━━━━━━━"
+    )
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Valider", callback_data=f"admin_complete_{order.id}"),
+            InlineKeyboardButton("❌ Annuler", callback_data=f"admin_cancel_{order.id}")
+        ],
+        [InlineKeyboardButton("✋ Prendre en charge", callback_data=f"admin_take_{order.id}")]
+    ])
 
+    session = SessionLocal()
+    try:
+        for admin_id in ADMIN_IDS:
+            try:
+                await context.bot.forward_message(
+                    chat_id=admin_id,
+                    from_chat_id=update.effective_chat.id,
+                    message_id=update.message.message_id
+                )
+                msg = await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=recap,
+                    parse_mode='Markdown',
+                    reply_markup=keyboard
+                )
+                om = OrderMessage(order_id=order.id, admin_id=admin_id, message_id=msg.message_id)
+                session.add(om)
+            except Exception as e:
+                print(f"Erreur envoi admin {admin_id}: {e}")
+        session.commit()
+    except Exception as e:
+        session.rollback()
+    finally:
+        session.close()
+
+    await update.message.reply_text(
+        f"✅ *Preuve reçue !*\n\n"
+        f"📌 Commande #{order.id}\n"
+        f"⏱️ Un admin va valider ton paiement rapidement !",
+        parse_mode='Markdown'
+    )
+
+
+# ========== ROUTES FLASK
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -2201,6 +2188,7 @@ def run_bot():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CallbackQueryHandler(button_callback))
+    application.add_handler(MessageHandler(filters.PHOTO, handle_payment_proof))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
     print("🤖 Bot Telegram démarré")
     application.run_polling(drop_pending_updates=True, stop_signals=None)
