@@ -1177,8 +1177,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"1️⃣ Connecte-toi à PayPal\n"
                 f"2️⃣ Envoie *{price_eur}€* à : `{PAYPAL_EMAIL}`\n"
                 f"3️⃣ ⚠️ ENVOIE EN TANT QU'AMI / PROCHE\n"
-                f"4️⃣ Note : `{user_id}-{order_id}`\n"
-                f"5️⃣ Envoie la capture ici 📸\n\n"
+                f"4️⃣ Envoie la capture ici 📸\n\n"
                 f"⏱️ Livraison dès validation admin"
             )
         elif method == 'Btc':
