@@ -17,7 +17,7 @@ from functools import wraps
 import threading
 
 # SQLAlchemy imports
-from sqlalchemy import create_engine, Column, Integer, BigInteger, String, Float, Boolean, ForeignKey, func
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, func
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, scoped_session
 
 # Configuration
@@ -313,70 +313,45 @@ user_states = {}
 HTML_LOGIN = '''<!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion - B4U Deals</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            width: 100%;
-            max-width: 400px;
-        }
-        h1 {
-            text-align: center;
-            color: #667eea;
-            margin-bottom: 30px;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 16px;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B4U Deals — Connexion</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:#0d0f14;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.bg{position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(102,126,234,0.25) 0%,transparent 70%)}
+.card{position:relative;z-index:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:48px 40px;width:100%;max-width:420px;backdrop-filter:blur(20px)}
+.logo{text-align:center;margin-bottom:36px}
+.logo-icon{width:64px;height:64px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:16px}
+.logo h1{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#fff;letter-spacing:-0.5px}
+.logo p{color:rgba(255,255,255,0.4);font-size:13px;margin-top:4px}
+label{display:block;color:rgba(255,255,255,0.5);font-size:12px;font-weight:500;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px}
+input{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 16px;color:#fff;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s}
+input:focus{border-color:rgba(102,126,234,0.6)}
+.input-wrap{margin-bottom:24px}
+button{width:100%;padding:15px;background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:10px;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;letter-spacing:0.3px;cursor:pointer;transition:opacity .2s}
+button:hover{opacity:0.9}
+.error{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:12px 16px;border-radius:10px;font-size:13px;margin-bottom:20px}
+</style>
 </head>
 <body>
-    <div class="login-container">
-        <h1>🎯 B4U Deals Admin</h1>
-        {% if error %}
-        <div class="error">{{ error }}</div>
-        {% endif %}
-        <form method="POST">
-            <input type="password" name="password" placeholder="Mot de passe" required>
-            <button type="submit">Se connecter</button>
-        </form>
+<div class="bg"></div>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <h1>B4U Deals</h1>
+    <p>Panneau d'administration</p>
+  </div>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="POST">
+    <div class="input-wrap">
+      <label>Mot de passe</label>
+      <input type="password" name="password" placeholder="••••••••" required autofocus>
     </div>
+    <button type="submit">Se connecter</button>
+  </form>
+</div>
 </body>
 </html>
 '''
@@ -384,313 +359,531 @@ HTML_LOGIN = '''<!DOCTYPE html>
 HTML_DASHBOARD = '''<!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - B4U Deals</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f7fa;
-        }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .header-actions a, .header-actions button {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            border-left: 5px solid #667eea;
-        }
-        .stat-card h3 {
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 10px;
-        }
-        .stat-card .value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #667eea;
-        }
-        .orders-section {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        }
-        .order-card {
-            background: #f9fafb;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            border-left: 5px solid #ddd;
-        }
-        .order-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .action-btn {
-            padding: 10px 18px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            color: white;
-        }
-        .btn-take { background: #3b82f6; }
-        .btn-complete { background: #10b981; }
-        .btn-cancel { background: #ef4444; }
-        .btn-restore { background: #f59e0b; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B4U Deals — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0f14;--surface:#161920;--surface2:#1e2129;--border:rgba(255,255,255,0.07);--text:#e8eaf0;--text2:rgba(232,234,240,0.5);--accent:#667eea;--accent2:#764ba2;--green:#10b981;--orange:#f59e0b;--red:#ef4444;--blue:#3b82f6}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+/* SIDEBAR */
+.sidebar{width:240px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;z-index:100}
+.sidebar-logo{padding:24px 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo .name{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff}
+.sidebar-logo .sub{font-size:11px;color:var(--text2);margin-top:2px}
+.sidebar-nav{padding:16px 12px;flex:1}
+.nav-section{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text2);padding:0 8px;margin:16px 0 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--text2);text-decoration:none;font-size:14px;font-weight:500;transition:all .15s;cursor:pointer;border:none;background:none;width:100%}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.nav-item.active{background:linear-gradient(135deg,rgba(102,126,234,0.2),rgba(118,75,162,0.1));color:#fff;border:1px solid rgba(102,126,234,0.25)}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.sidebar-footer{padding:16px 12px;border-top:1px solid var(--border)}
+/* MAIN */
+.main{margin-left:240px;flex:1;min-height:100vh;display:flex;flex-direction:column}
+.topbar{padding:20px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)}
+.topbar h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:#fff}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.badge{background:rgba(102,126,234,0.15);border:1px solid rgba(102,126,234,0.3);color:var(--accent);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.refresh-btn{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text2);padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.refresh-btn:hover{background:rgba(255,255,255,0.1);color:var(--text)}
+.content{padding:24px 28px;flex:1}
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px;transition:transform .15s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi-label{font-size:12px;color:var(--text2);font-weight:500;letter-spacing:0.3px;margin-bottom:10px}
+.kpi-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;color:#fff}
+.kpi-sub{font-size:12px;color:var(--text2);margin-top:4px}
+.kpi.green .kpi-value{color:var(--green)}
+.kpi.orange .kpi-value{color:var(--orange)}
+.kpi.blue .kpi-value{color:var(--blue)}
+/* FILTERS */
+.filters{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.filter-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.filter-btn:hover,.filter-btn.active{background:rgba(102,126,234,0.15);border-color:rgba(102,126,234,0.4);color:var(--accent)}
+.search-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;margin-left:auto;width:220px}
+.search-input::placeholder{color:var(--text2)}
+.search-input:focus{border-color:rgba(102,126,234,0.4)}
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-header h3{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--surface2)}
+th{padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border)}
+td{padding:13px 16px;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.04)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.status-badge.attente{background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.25)}
+.status-badge.cours{background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25)}
+.status-badge.terminee{background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25)}
+.status-badge.annulee{background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)}
+.action-btn{padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;transition:opacity .15s}
+.action-btn:hover{opacity:0.8}
+.btn-take{background:rgba(59,130,246,0.2);color:#60a5fa;border:1px solid rgba(59,130,246,0.3)}
+.btn-complete{background:rgba(16,185,129,0.2);color:#34d399;border:1px solid rgba(16,185,129,0.3)}
+.btn-cancel{background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.25)}
+.btn-restore{background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.25)}
+.empty{text-align:center;padding:48px;color:var(--text2);font-size:14px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.attente{background:#fbbf24}
+.dot.cours{background:#60a5fa}
+.dot.terminee{background:#34d399}
+.dot.annulee{background:#f87171}
+.page-hidden{display:none!important}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:500px}
+.modal h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:20px}
+.modal-field{margin-bottom:16px}
+.modal-field label{display:block;font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
+.modal-field input,.modal-field select{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none}
+.modal-field select option{background:var(--surface2);color:var(--text)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);border:none;color:#fff;padding:10px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer}
+.btn-ghost{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text2);padding:10px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer}
+.send-link-btn{background:rgba(102,126,234,0.15);border:1px solid rgba(102,126,234,0.3);color:var(--accent);padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+</style>
 </head>
 <body>
-    <div class="header">
-        <h1>🎯 B4U Deals - Dashboard</h1>
-        <div class="header-actions">
-            <a href="/manager">🎛️ Manager</a>
-            <a href="/users">👥 Utilisateurs</a>
-            <a href="/simulate">🎲 Simuler</a>
-            <a href="/logout">Déconnexion</a>
-        </div>
-    </div>
-    <div class="container">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>📦 Total Commandes</h3>
-                <div class="value" id="total-orders">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>⏳ En Attente</h3>
-                <div class="value" id="pending-orders">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>💰 CA Total</h3>
-                <div class="value" id="revenue">0€</div>
-            </div>
-            <div class="stat-card">
-                <h3>💵 Bénéfice Total</h3>
-                <div class="value" id="profit">0€</div>
-            </div>
-        </div>
-        <div class="orders-section">
-            <h2>📋 Commandes</h2>
-            <div id="orders-container"></div>
-        </div>
-    </div>
-    <script>
-        async function loadData() {
-            const response = await fetch('/api/dashboard');
-            const data = await response.json();
-            document.getElementById('total-orders').textContent = data.stats.total_orders;
-            document.getElementById('pending-orders').textContent = data.stats.pending_orders;
-            document.getElementById('revenue').textContent = data.stats.revenue.toFixed(0) + '€';
-            document.getElementById('profit').textContent = data.stats.profit.toFixed(0) + '€';
-            displayOrders(data.orders);
-        }
-        function displayOrders(orders) {
-            const container = document.getElementById('orders-container');
-            if (orders.length === 0) {
-                container.innerHTML = '<p>Aucune commande</p>';
-                return;
-            }
-            container.innerHTML = orders.slice(0, 20).map(o => `
-                <div class="order-card">
-                    <strong>#${o.id}</strong> - ${o.service} - ${o.price}€<br>
-                    <small>${o.first_name} ${o.last_name} - ${o.email}</small><br>
-                    <span>Statut: ${o.status}</span>
-                    <div class="order-actions">
-                        ${o.status === 'en_attente' ? `<button class="action-btn btn-take" onclick="takeOrder(${o.id})">Prendre</button>` : ''}
-                        ${o.status === 'en_cours' ? `<button class="action-btn btn-complete" onclick="completeOrder(${o.id})">Terminer</button>` : ''}
-                        <button class="action-btn btn-cancel" onclick="cancelOrder(${o.id})">Annuler</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-        async function takeOrder(id) {
-            await fetch('/api/order/' + id + '/take', {method: 'POST'});
-            loadData();
-        }
-        async function completeOrder(id) {
-            await fetch('/api/order/' + id + '/complete', {method: 'POST'});
-            loadData();
-        }
-        async function cancelOrder(id) {
-            await fetch('/api/order/' + id + '/cancel', {method: 'POST'});
-            loadData();
-        }
-        loadData();
-        setInterval(loadData, 15000);
-    </script>
-</body>
-</html>
-'''
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div style="font-size:24px;margin-bottom:8px">🎯</div>
+    <div class="name">B4U Deals</div>
+    <div class="sub">Panneau Admin</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Principal</div>
+    <button class="nav-item active" onclick="showPage('dashboard',this)"><span class="icon">📊</span>Dashboard</button>
+    <button class="nav-item" onclick="showPage('orders',this)"><span class="icon">📦</span>Commandes</button>
+    <button class="nav-item" onclick="showPage('users',this)"><span class="icon">👥</span>Utilisateurs</button>
+    <div class="nav-section">Configuration</div>
+    <button class="nav-item" onclick="showPage('manager',this)"><span class="icon">🎛️</span>Services</button>
+    <button class="nav-item" onclick="showPage('simulate',this)"><span class="icon">🎲</span>Simuler</button>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/logout" class="nav-item" style="text-decoration:none"><span class="icon">🚪</span>Déconnexion</a>
+  </div>
+</aside>
 
-HTML_USERS = '''<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Utilisateurs - B4U Deals</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f7fa;
-        }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 20px auto;
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        th {
-            background: #f9fafb;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>👥 Utilisateurs</h1>
-        <a href="/dashboard" style="color:white;text-decoration:none">← Dashboard</a>
+<div class="main">
+  <!-- PAGE DASHBOARD -->
+  <div id="page-dashboard">
+    <div class="topbar">
+      <h2>Vue d'ensemble</h2>
+      <div class="topbar-right">
+        <span class="badge" id="live-badge">● Live</span>
+        <button class="refresh-btn" onclick="loadAll()">↻ Actualiser</button>
+      </div>
     </div>
-    <div class="container">
-        <h2>Liste des Utilisateurs</h2>
-        <table id="usersTable">
-            <thead>
-                <tr>
-                    <th>Utilisateur</th>
-                    <th>Telegram</th>
-                    <th>Commandes</th>
-                    <th>Première visite</th>
-                </tr>
-            </thead>
-            <tbody id="users-body"></tbody>
+    <div class="content">
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">📦 Total commandes</div><div class="kpi-value" id="kpi-total">—</div><div class="kpi-sub">depuis le début</div></div>
+        <div class="kpi orange"><div class="kpi-label">⏳ En attente</div><div class="kpi-value" id="kpi-pending">—</div><div class="kpi-sub">à traiter</div></div>
+        <div class="kpi green"><div class="kpi-label">💰 Chiffre d'affaires</div><div class="kpi-value" id="kpi-revenue">—</div><div class="kpi-sub">cumulé total</div></div>
+        <div class="kpi blue"><div class="kpi-label">💵 Bénéfice net</div><div class="kpi-value" id="kpi-profit">—</div><div class="kpi-sub">cumulé total</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>Commandes récentes</h3>
+          <button class="filter-btn" onclick="showPage('orders',document.querySelectorAll('.nav-item')[1])">Voir tout →</button>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Service</th><th>Client</th><th>Montant</th><th>Paiement</th><th>Statut</th><th>Actions</th></tr></thead>
+          <tbody id="recent-orders"></tbody>
         </table>
+      </div>
     </div>
-    <script>
-        async function loadUsers() {
-            const response = await fetch('/api/users');
-            const data = await response.json();
-            const tbody = document.getElementById('users-body');
-            tbody.innerHTML = data.users.map(u => `
-                <tr>
-                    <td><strong>${u.first_name} ${u.last_name}</strong></td>
-                    <td>@${u.username}</td>
-                    <td><strong>${u.total_orders}</strong></td>
-                    <td>${new Date(u.first_seen).toLocaleDateString()}</td>
-                </tr>
-            `).join('');
-        }
-        loadUsers();
-    </script>
+  </div>
+
+  <!-- PAGE ORDERS -->
+  <div id="page-orders" class="page-hidden">
+    <div class="topbar">
+      <h2>Commandes</h2>
+      <div class="topbar-right">
+        <span id="orders-count" class="badge">0</span>
+        <button class="refresh-btn" onclick="loadOrders()">↻ Actualiser</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="filters">
+        <button class="filter-btn active" onclick="filterOrders('all',this)">Toutes</button>
+        <button class="filter-btn" onclick="filterOrders('en_attente',this)">⏳ Attente</button>
+        <button class="filter-btn" onclick="filterOrders('en_cours',this)">🔵 En cours</button>
+        <button class="filter-btn" onclick="filterOrders('terminee',this)">✅ Terminées</button>
+        <button class="filter-btn" onclick="filterOrders('annulee',this)">❌ Annulées</button>
+        <input type="text" class="search-input" id="orders-search" placeholder="🔍 Rechercher..." oninput="renderOrders()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Service / Plan</th><th>Client</th><th>Email</th><th>Montant</th><th>Paiement</th><th>Statut</th><th>Actions</th></tr></thead>
+          <tbody id="orders-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE USERS -->
+  <div id="page-users" class="page-hidden">
+    <div class="topbar">
+      <h2>Utilisateurs</h2>
+      <div class="topbar-right"><span id="users-count" class="badge">0</span></div>
+    </div>
+    <div class="content">
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+        <div class="kpi"><div class="kpi-label">👥 Total</div><div class="kpi-value" id="u-total">—</div></div>
+        <div class="kpi green"><div class="kpi-label">🛒 Actifs</div><div class="kpi-value" id="u-active">—</div></div>
+        <div class="kpi blue"><div class="kpi-label">📈 Conversion</div><div class="kpi-value" id="u-conv">—</div></div>
+        <div class="kpi orange"><div class="kpi-label">🆕 7 derniers jours</div><div class="kpi-value" id="u-new">—</div></div>
+      </div>
+      <div class="filters">
+        <input type="text" class="search-input" id="users-search" placeholder="🔍 Rechercher..." oninput="renderUsers()" style="margin-left:0">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Utilisateur</th><th>Telegram</th><th>ID</th><th>Commandes</th><th>Première visite</th><th>Dernière activité</th></tr></thead>
+          <tbody id="users-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE MANAGER -->
+  <div id="page-manager" class="page-hidden">
+    <div class="topbar">
+      <h2>Gestion des services</h2>
+      <div class="topbar-right">
+        <button class="refresh-btn" onclick="loadManager()">↻ Actualiser</button>
+        <button class="btn-primary" onclick="openAddServiceModal()" style="font-size:13px;padding:8px 16px">+ Ajouter service</button>
+      </div>
+    </div>
+    <div class="content">
+      <div id="manager-content"></div>
+    </div>
+  </div>
+
+  <!-- PAGE SIMULATE -->
+  <div id="page-simulate" class="page-hidden">
+    <div class="topbar"><h2>Simuler des commandes</h2></div>
+    <div class="content">
+      <div class="table-wrap" style="padding:28px;max-width:520px">
+        <h3 style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:24px">🎲 Génération de données test</h3>
+        <div class="modal-field">
+          <label>Nombre de commandes</label>
+          <input type="number" id="sim-count" value="5" min="1" max="100" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;width:100%;font-size:14px;outline:none">
+        </div>
+        <div class="modal-field">
+          <label>Service</label>
+          <select id="sim-service" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;width:100%;font-size:14px;outline:none">
+            <option value="all">Tous les services</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>Statut</label>
+          <select id="sim-status" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;width:100%;font-size:14px;outline:none">
+            <option value="terminee">Terminée</option>
+            <option value="en_attente">En attente</option>
+            <option value="en_cours">En cours</option>
+            <option value="annulee">Annulée</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="runSimulate()" style="width:100%;margin-top:8px;padding:12px">Générer</button>
+        <div id="sim-result" style="margin-top:16px;font-size:13px;color:var(--text2)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-overlay" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+<!-- SEND LINK MODAL -->
+<div id="link-modal-overlay" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeLinkModal()">
+  <div class="modal" id="link-modal-content">
+    <h3>📨 Envoyer un lien</h3>
+    <div class="modal-field">
+      <label>Lien à envoyer</label>
+      <input type="text" id="link-input" placeholder="https://..." style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;width:100%;font-size:14px;outline:none">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeLinkModal()">Annuler</button>
+      <button class="btn-primary" onclick="sendLink()">Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let allOrders = [];
+let allUsers = [];
+let currentFilter = 'all';
+let currentLinkOrderId = null;
+
+// Navigation
+function showPage(page, btn) {
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.classList.add('page-hidden'));
+  document.getElementById('page-' + page).classList.remove('page-hidden');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'orders') loadOrders();
+  if (page === 'users') loadUsers();
+  if (page === 'manager') loadManager();
+  if (page === 'simulate') loadSimServices();
+}
+
+// === DASHBOARD ===
+async function loadDashboard() {
+  const r = await fetch('/api/dashboard'); const d = await r.json();
+  document.getElementById('kpi-total').textContent = d.stats.total_orders;
+  document.getElementById('kpi-pending').textContent = d.stats.pending_orders;
+  document.getElementById('kpi-revenue').textContent = d.stats.revenue.toFixed(2) + '€';
+  document.getElementById('kpi-profit').textContent = d.stats.profit.toFixed(2) + '€';
+  const tbody = document.getElementById('recent-orders');
+  const recent = d.orders.slice(0, 10);
+  if (!recent.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Aucune commande</td></tr>'; return; }
+  tbody.innerHTML = recent.map(o => `<tr>
+    <td><strong>#${o.id}</strong></td>
+    <td>${o.service}<br><small style="color:var(--text2)">${o.plan||''}</small></td>
+    <td>${o.first_name||''} ${o.last_name||''}<br><small style="color:var(--text2)">@${o.username||'N/A'}</small></td>
+    <td><strong>${o.price}€</strong></td>
+    <td>${o.payment_method||'—'}</td>
+    <td>${statusBadge(o.status)}</td>
+    <td>${actionBtns(o)}</td>
+  </tr>`).join('');
+}
+
+// === ORDERS ===
+async function loadOrders() {
+  const r = await fetch('/api/dashboard'); const d = await r.json();
+  allOrders = d.orders;
+  document.getElementById('orders-count').textContent = d.orders.length;
+  renderOrders();
+}
+function filterOrders(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('#page-orders .filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderOrders();
+}
+function renderOrders() {
+  const q = (document.getElementById('orders-search').value||''). toLowerCase();
+  let list = allOrders.filter(o => currentFilter === 'all' || o.status === currentFilter);
+  if (q) list = list.filter(o => JSON.stringify(o).toLowerCase().includes(q));
+  const tbody = document.getElementById('orders-table');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">Aucune commande</td></tr>'; return; }
+  tbody.innerHTML = list.map(o => `<tr>
+    <td><strong>#${o.id}</strong></td>
+    <td>${o.service}<br><small style="color:var(--text2)">${o.plan||''}</small></td>
+    <td>${o.first_name||''} ${o.last_name||''}<br><small style="color:var(--text2)">@${o.username||'N/A'}</small></td>
+    <td style="color:var(--text2);font-size:13px">${o.email||'—'}</td>
+    <td><strong>${o.price}€</strong><br><small style="color:var(--text2)">coût ${o.cost||0}€</small></td>
+    <td>${o.payment_method||'—'}</td>
+    <td>${statusBadge(o.status)}</td>
+    <td style="white-space:nowrap">${actionBtns(o)} <button class="send-link-btn" onclick="openLinkModal(${o.id})">🔗</button></td>
+  </tr>`).join('');
+}
+
+// === USERS ===
+async function loadUsers() {
+  const r = await fetch('/api/users'); const d = await r.json();
+  allUsers = d.users;
+  document.getElementById('users-count').textContent = d.users.length;
+  document.getElementById('u-total').textContent = d.stats.total_users;
+  document.getElementById('u-active').textContent = d.stats.active_users;
+  document.getElementById('u-conv').textContent = d.stats.conversion_rate + '%';
+  document.getElementById('u-new').textContent = d.stats.new_users;
+  renderUsers();
+}
+function renderUsers() {
+  const q = (document.getElementById('users-search').value||''). toLowerCase();
+  let list = allUsers;
+  if (q) list = list.filter(u => JSON.stringify(u).toLowerCase().includes(q));
+  const tbody = document.getElementById('users-table');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Aucun utilisateur</td></tr>'; return; }
+  tbody.innerHTML = list.map(u => `<tr>
+    <td><strong>${u.first_name} ${u.last_name}</strong></td>
+    <td>@${u.username}</td>
+    <td style="color:var(--text2);font-size:12px">${u.user_id}</td>
+    <td><span class="status-badge cours">${u.total_orders} commande${u.total_orders>1?'s':''}</span></td>
+    <td style="color:var(--text2);font-size:13px">${fmtDate(u.first_seen)}</td>
+    <td style="color:var(--text2);font-size:13px">${fmtDate(u.last_activity)}</td>
+  </tr>`).join('');
+}
+
+// === MANAGER ===
+async function loadManager() {
+  const r = await fetch('/api/services'); const d = await r.json();
+  const cats = {streaming:'🎬 Streaming',sport:'⚽ Sport',music:'🎧 Musique',ai:'🤖 IA',fitness:'🏋️ Fitness',vpn:'🔒 VPN',software:'💻 Logiciels',education:'📚 Éducation',apple:'🍎 Apple'};
+  const bycat = {};
+  d.services.forEach(s => { const c = s.category||'other'; if(!bycat[c]) bycat[c]=[]; bycat[c].push(s); });
+  let html = '';
+  for (const [cat, svcs] of Object.entries(bycat)) {
+    html += `<div style="margin-bottom:24px">
+      <h4 style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">${cats[cat]||cat}</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Service</th><th>Plan</th><th>Prix</th><th>Coût</th><th>Marge</th><th>Statut</th><th>Actions</th></tr></thead>
+          <tbody>`;
+    svcs.forEach(s => {
+      if (s.plans.length === 0) {
+        html += `<tr><td><strong>${s.emoji} ${s.display_name}</strong></td><td colspan="4" style="color:var(--text2)">Aucun plan</td>
+          <td>${s.active ? '<span class="status-badge terminee">Actif</span>' : '<span class="status-badge annulee">Inactif</span>'}</td>
+          <td><button class="action-btn btn-take" onclick='editService(${JSON.stringify(s)})'>✏️</button>
+              <button class="action-btn btn-cancel" onclick="deleteService('${s.service_key}')">🗑️</button>
+              <button class="action-btn btn-restore" onclick='addPlanModal("${s.service_key}")'>+ Plan</button></td></tr>`;
+      } else {
+        s.plans.forEach((p, i) => {
+          const margin = ((p.price - p.cost) / p.price * 100).toFixed(0);
+          html += `<tr>
+            ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:15px"><strong>${s.emoji} ${s.display_name}</strong><br><small style="color:var(--text2)">${s.service_key}</small></td>` : ''}
+            <td>${p.label}</td><td><strong>${p.price}€</strong></td><td>${p.cost}€</td>
+            <td><span style="color:${margin>50?'#34d399':'#fbbf24'}">${margin}%</span></td>
+            ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:15px">${s.active ? '<span class="status-badge terminee">Actif</span>' : '<span class="status-badge annulee">Inactif</span>'}</td>` : ''}
+            ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:12px;white-space:nowrap">
+              <button class="action-btn btn-take" onclick='editService(${JSON.stringify(s)})'>✏️</button>
+              <button class="action-btn btn-cancel" onclick="deleteService('${s.service_key}')">🗑️</button>
+              <button class="action-btn btn-restore" onclick='addPlanModal("${s.service_key}")'>+ Plan</button>
+              <button class="action-btn" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)" onclick='deletePlan("${s.service_key}","${p.plan_key}")'>✕</button>
+              </td>` : `<td><button class="action-btn" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)" onclick='deletePlan("${s.service_key}","${p.plan_key}")'>✕</button></td>`}
+          </tr>`;
+        });
+      }
+    });
+    html += `</tbody></table></div></div>`;
+  }
+  document.getElementById('manager-content').innerHTML = html;
+}
+
+function openAddServiceModal() {
+  document.getElementById('modal-content').innerHTML = `
+    <h3>➕ Nouveau service</h3>
+    <div class="modal-field"><label>Clé (ex: netflix)</label><input id="m-key" placeholder="netflix"></div>
+    <div class="modal-field"><label>Emoji</label><input id="m-emoji" placeholder="🎬"></div>
+    <div class="modal-field"><label>Nom</label><input id="m-name" placeholder="Netflix"></div>
+    <div class="modal-field"><label>Catégorie</label>
+      <select id="m-cat"><option value="streaming">streaming</option><option value="sport">sport</option><option value="music">music</option><option value="ai">ai</option><option value="fitness">fitness</option><option value="vpn">vpn</option><option value="software">software</option><option value="education">education</option><option value="apple">apple</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" onclick="createService()">Créer</button>
+    </div>`;
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+async function createService() {
+  const r = await fetch('/api/services', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({service_key:document.getElementById('m-key').value,emoji:document.getElementById('m-emoji').value,display_name:document.getElementById('m-name').value,category:document.getElementById('m-cat').value,active:true,visible:true})});
+  closeModal(); loadManager();
+}
+function editService(s) {
+  document.getElementById('modal-content').innerHTML = `
+    <h3>✏️ Modifier ${s.emoji} ${s.display_name}</h3>
+    <div class="modal-field"><label>Emoji</label><input id="m-emoji" value="${s.emoji}"></div>
+    <div class="modal-field"><label>Nom</label><input id="m-name" value="${s.display_name}"></div>
+    <div class="modal-field"><label>Catégorie</label>
+      <select id="m-cat"><option value="streaming" ${s.category==='streaming'?'selected':''}>streaming</option><option value="sport" ${s.category==='sport'?'selected':''}>sport</option><option value="music" ${s.category==='music'?'selected':''}>music</option><option value="ai" ${s.category==='ai'?'selected':''}>ai</option><option value="fitness" ${s.category==='fitness'?'selected':''}>fitness</option><option value="vpn" ${s.category==='vpn'?'selected':''}>vpn</option><option value="software" ${s.category==='software'?'selected':''}>software</option><option value="education" ${s.category==='education'?'selected':''}>education</option><option value="apple" ${s.category==='apple'?'selected':''}>apple</option></select>
+    </div>
+    <div class="modal-field"><label>Actif</label><select id="m-active"><option value="1" ${s.active?'selected':''}>Oui</option><option value="0" ${!s.active?'selected':''}>Non</option></select></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" onclick="updateService('${s.service_key}')">Sauvegarder</button>
+    </div>`;
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+async function updateService(key) {
+  await fetch('/api/services/'+key, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji:document.getElementById('m-emoji').value,display_name:document.getElementById('m-name').value,category:document.getElementById('m-cat').value,active:document.getElementById('m-active').value==='1'})});
+  closeModal(); loadManager();
+}
+async function deleteService(key) {
+  if(!confirm('Supprimer ce service ?')) return;
+  await fetch('/api/services/'+key, {method:'DELETE'});
+  loadManager();
+}
+function addPlanModal(serviceKey) {
+  document.getElementById('modal-content').innerHTML = `
+    <h3>➕ Ajouter un plan</h3>
+    <div class="modal-field"><label>Clé du plan (ex: standard)</label><input id="p-key" placeholder="standard"></div>
+    <div class="modal-field"><label>Label</label><input id="p-label" placeholder="Netflix Premium"></div>
+    <div class="modal-field"><label>Prix (€)</label><input id="p-price" type="number" step="0.01" placeholder="9.00"></div>
+    <div class="modal-field"><label>Coût (€)</label><input id="p-cost" type="number" step="0.01" placeholder="1.50"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" onclick="createPlan('${serviceKey}')">Ajouter</button>
+    </div>`;
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+async function createPlan(serviceKey) {
+  await fetch('/api/services/'+serviceKey+'/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan_key:document.getElementById('p-key').value,label:document.getElementById('p-label').value,price:parseFloat(document.getElementById('p-price').value),cost:parseFloat(document.getElementById('p-cost').value)})});
+  closeModal(); loadManager();
+}
+async function deletePlan(serviceKey, planKey) {
+  if(!confirm('Supprimer ce plan ?')) return;
+  await fetch('/api/services/'+serviceKey+'/plans/'+planKey, {method:'DELETE'});
+  loadManager();
+}
+function closeModal() { document.getElementById('modal-overlay').style.display='none'; }
+
+// SEND LINK
+function openLinkModal(orderId) { currentLinkOrderId = orderId; document.getElementById('link-input').value=''; document.getElementById('link-modal-overlay').style.display='flex'; }
+function closeLinkModal() { document.getElementById('link-modal-overlay').style.display='none'; }
+async function sendLink() {
+  const link = document.getElementById('link-input').value.trim();
+  if (!link) return;
+  await fetch('/api/order/'+currentLinkOrderId+'/send_link', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({link})});
+  closeLinkModal();
+}
+
+// SIMULATE
+async function loadSimServices() {
+  const r = await fetch('/api/services'); const d = await r.json();
+  const sel = document.getElementById('sim-service');
+  sel.innerHTML = '<option value="all">Tous les services</option>' + d.services.map(s => `<option value="${s.service_key}">${s.emoji} ${s.display_name}</option>`).join('');
+}
+async function runSimulate() {
+  const el = document.getElementById('sim-result');
+  el.textContent = 'Génération en cours...';
+  const r = await fetch('/api/simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count:parseInt(document.getElementById('sim-count').value),service:document.getElementById('sim-service').value,status:document.getElementById('sim-status').value})});
+  const d = await r.json();
+  el.textContent = d.success ? `✅ ${d.created} commande(s) créée(s)` : `❌ Erreur: ${d.error}`;
+  el.style.color = d.success ? 'var(--green)' : 'var(--red)';
+}
+
+// ORDER ACTIONS
+async function takeOrder(id) { await fetch('/api/order/'+id+'/take',{method:'POST'}); loadAll(); }
+async function completeOrder(id) { await fetch('/api/order/'+id+'/complete',{method:'POST'}); loadAll(); }
+async function cancelOrder(id) { await fetch('/api/order/'+id+'/cancel',{method:'POST'}); loadAll(); }
+async function restoreOrder(id) { await fetch('/api/order/'+id+'/restore',{method:'POST'}); loadAll(); }
+
+function loadAll() { loadDashboard(); if(!document.getElementById('page-orders').classList.contains('page-hidden')) loadOrders(); }
+
+// HELPERS
+function statusBadge(s) {
+  const map = {en_attente:'attente',en_cours:'cours',terminee:'terminee',annulee:'annulee'};
+  const lbl = {en_attente:'⏳ Attente',en_cours:'🔵 En cours',terminee:'✅ Terminée',annulee:'❌ Annulée'};
+  return `<span class="status-badge ${map[s]||''}">${lbl[s]||s}</span>`;
+}
+function actionBtns(o) {
+  let btns = '';
+  if (o.status==='en_attente') btns += `<button class="action-btn btn-take" onclick="takeOrder(${o.id})">Prendre</button> `;
+  if (o.status==='en_cours') btns += `<button class="action-btn btn-complete" onclick="completeOrder(${o.id})">Terminer</button> `;
+  if (o.status!=='annulee') btns += `<button class="action-btn btn-cancel" onclick="cancelOrder(${o.id})">Annuler</button> `;
+  if (o.status==='annulee'||o.status==='terminee') btns += `<button class="action-btn btn-restore" onclick="restoreOrder(${o.id})">↩️</button>`;
+  return btns;
+}
+function fmtDate(s) { if(!s) return '—'; try { return new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}); } catch(e){return s;} }
+
+// Init
+loadDashboard();
+setInterval(loadAll, 20000);
+</script>
 </body>
 </html>
 '''
 
-HTML_REACT_MANAGER = '''<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Manager - B4U Deals</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
-        }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .card {
-            background: white;
-            padding: 16px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            margin-bottom: 12px;
-        }
-        button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            margin: 5px 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🎛️ Bot Manager</h1>
-        <a href="/dashboard" style="color:white">← Dashboard</a>
-    </div>
-    <div id="content">
-        <div class="card">
-            <h2>Gestion des Services</h2>
-            <p>Utilisez l'API pour gérer les services</p>
-            <button onclick="location.reload()">Recharger</button>
-        </div>
-    </div>
-</body>
-</html>
-'''
+HTML_USERS = ''''''
+HTML_REACT_MANAGER = ''''''
+HTML_SIMULATE = ''''''
 
 # DB config
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -726,7 +919,7 @@ class Plan(Base):
 class Order(Base):
     __tablename__ = 'orders'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, nullable=True)
+    user_id = Column(Integer, nullable=True)
     username = Column(String, nullable=True)
     service = Column(String)
     plan = Column(String)
@@ -739,10 +932,10 @@ class Order(Base):
     payment_method = Column(String, nullable=True)
     timestamp = Column(String)
     status = Column(String, default='en_attente')
-    admin_id = Column(BigInteger, nullable=True)
+    admin_id = Column(Integer, nullable=True)
     admin_username = Column(String, nullable=True)
     taken_at = Column(String, nullable=True)
-    cancelled_by = Column(BigInteger, nullable=True)
+    cancelled_by = Column(Integer, nullable=True)
     cancelled_at = Column(String, nullable=True)
     cancel_reason = Column(String, nullable=True)
 
@@ -750,12 +943,12 @@ class OrderMessage(Base):
     __tablename__ = 'order_messages'
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(Integer, index=True)
-    admin_id = Column(BigInteger)
+    admin_id = Column(Integer)
     message_id = Column(Integer)
 
 class User(Base):
     __tablename__ = 'users'
-    user_id = Column(BigInteger, primary_key=True)
+    user_id = Column(Integer, primary_key=True)
     username = Column(String)
     first_name = Column(String)
     last_name = Column(String)
@@ -1177,7 +1370,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"1️⃣ Connecte-toi à PayPal\n"
                 f"2️⃣ Envoie *{price_eur}€* à : `{PAYPAL_EMAIL}`\n"
                 f"3️⃣ ⚠️ ENVOIE EN TANT QU'AMI / PROCHE\n"
-                f"4️⃣ Envoie la capture ici 📸\n\n"
+                f"4️⃣ Note : `{user_id}-{order_id}`\n"
+                f"5️⃣ Envoie la capture ici 📸\n\n"
                 f"⏱️ Livraison dès validation admin"
             )
         elif method == 'Btc':
@@ -1565,17 +1759,17 @@ def dashboard():
 @app.route('/simulate')
 @login_required
 def simulate():
-    return render_template_string(HTML_SIMULATE)
+    return redirect('/dashboard')
 
 @app.route('/users')
 @login_required
 def users_page():
-    return render_template_string(HTML_USERS)
+    return redirect('/dashboard')
 
 @app.route('/manager')
 @login_required
 def manager_page():
-    return render_template_string(HTML_REACT_MANAGER)
+    return redirect('/dashboard')
 
 # ── API TOKEN (pour dashboard externe) ───────────────────────────────────────
 
@@ -2176,6 +2370,34 @@ def api_simulate():
     finally:
         session.close()
     return jsonify({'success': True, 'created': len(created_orders), 'orders': created_orders})
+
+
+@app.route('/api/order/<int:order_id>/send_link', methods=['POST'])
+@login_required
+def send_link_route(order_id):
+    data = request.get_json(force=True)
+    link = data.get('link', '').strip()
+    if not link:
+        return jsonify({'error': 'link_required'}), 400
+    session = SessionLocal()
+    try:
+        o = session.get(Order, order_id)
+        if not o:
+            return jsonify({'error': 'not_found'}), 404
+        user_id = o.user_id
+    finally:
+        session.close()
+    try:
+        import asyncio
+        async def _send():
+            from telegram import Bot
+            bot = Bot(token=BOT_TOKEN)
+            await bot.send_message(chat_id=user_id, text=f"🔗 Voici votre lien :\n{link}")
+        asyncio.run(_send())
+    except Exception as e:
+        print(f"Erreur send_link: {e}")
+        return jsonify({'error': str(e)}), 500
+    return jsonify({'success': True})
 
 # BOT TELEGRAM MAIN
 def run_bot():
