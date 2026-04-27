@@ -970,20 +970,20 @@ async def resend_order_to_all_admins_async(context, order_id, service_name, plan
         admin_text += f"💳 {payment_method}\n"
     admin_text += f"\n🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}"
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("✋ Prendre", callback_data=f"admin_take_{order_id}"), InlineKeyboardButton("❌ Annuler", callback_data=f"admin_cancel_{order_id}")]])
-    session = SessionLocal()
+    db = SessionLocal()
     try:
         for admin_id in ADMIN_IDS:
             try:
                 msg = await context.bot.send_message(chat_id=admin_id, text=admin_text, parse_mode='Markdown', reply_markup=keyboard)
                 om = OrderMessage(order_id=order_id, admin_id=admin_id, message_id=msg.message_id)
-                session.add(om)
+                db.add(om)
             except Exception as e:
                 print(f"Erreur envoi admin {admin_id}: {e}")
-        session.commit()
+        db.commit()
     except Exception as e:
-        session.rollback()
+        db.rollback()
     finally:
-        session.close()
+        db.close()
 # Telegram handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -1113,7 +1113,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         # Créer la commande en DB
-        session = SessionLocal()
+        db = SessionLocal()
         try:
             order = Order(
                 user_id=user_id,
@@ -1129,21 +1129,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 timestamp=datetime.now().isoformat(),
                 status='en_attente'
             )
-            session.add(order)
-            session.flush()
+            db.add(order)
+            db.flush()
             order_id = order.id
-            user_obj = session.get(User, user_id)
+            user_obj = db.get(User, user_id)
             if user_obj:
                 user_obj.total_orders = (user_obj.total_orders or 0) + 1
-            session.commit()
+            db.commit()
         except Exception as e:
-            session.rollback()
+            db.rollback()
             print(f"Erreur création commande: {e}")
+            traceback.print_exc()
             await query.message.reply_text("❌ Erreur lors de la création de la commande.")
-            session.close()
+            db.close()
             return
         finally:
-            session.close()
+            db.close()
 
         # Instructions selon mode de paiement
         PAYPAL_EMAIL = os.getenv('PAYPAL_EMAIL', 'votre@paypal.com')
@@ -1251,17 +1252,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         admin_id = query.from_user.id
         admin_username = query.from_user.username or f"Admin_{admin_id}"
         
-        session = SessionLocal()
+        db = SessionLocal()
         try:
-            order = session.get(Order, order_id)
+            order = db.get(Order, order_id)
             if not order:
                 await query.answer("❌ Commande introuvable", show_alert=True)
-                session.close()
+                db.close()
                 return
             
             if order.status != 'en_attente':
                 await query.answer("❌ Commande déjà prise", show_alert=True)
-                session.close()
+                db.close()
                 return
             
             # Mettre à jour la commande
@@ -1269,7 +1270,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             order.admin_id = admin_id
             order.admin_username = admin_username
             order.taken_at = datetime.now().isoformat()
-            session.commit()
+            db.commit()
             
             # Récupérer toutes les infos pour le nouveau message
             service_name = order.service
@@ -1284,13 +1285,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             payment_method_order = order.payment_method
             
         except Exception as e:
-            session.rollback()
+            db.rollback()
             print(f"Erreur prise commande: {e}")
             await query.answer("❌ Erreur", show_alert=True)
-            session.close()
+            db.close()
             return
         finally:
-            session.close()
+            db.close()
         
         # Supprimer les notifications des autres admins
         delete_other_admin_notifications(order_id, admin_id)
@@ -1333,34 +1334,34 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("admin_complete_"):
         order_id = int(data.replace("admin_complete_", ""))
         
-        session = SessionLocal()
+        db = SessionLocal()
         try:
-            order = session.get(Order, order_id)
+            order = db.get(Order, order_id)
             if not order:
                 await query.answer("❌ Commande introuvable", show_alert=True)
-                session.close()
+                db.close()
                 return
             
             price = order.price or 0.0
             cost = order.cost or 0.0
             
             # Mettre à jour les stats cumulatives
-            cs = session.get(CumulativeStats, 1)
+            cs = db.get(CumulativeStats, 1)
             if cs:
                 cs.total_revenue = (cs.total_revenue or 0.0) + price
                 cs.total_profit = (cs.total_profit or 0.0) + (price - cost)
                 cs.last_updated = datetime.now().isoformat()
             
             order.status = 'terminee'
-            session.commit()
+            db.commit()
         except Exception as e:
-            session.rollback()
+            db.rollback()
             print(f"Erreur terminer commande: {e}")
             await query.answer("❌ Erreur", show_alert=True)
-            session.close()
+            db.close()
             return
         finally:
-            session.close()
+            db.close()
         
         # Modifier tous les messages admin
         completed_text = (
@@ -1377,26 +1378,26 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("admin_cancel_"):
         order_id = int(data.replace("admin_cancel_", ""))
         
-        session = SessionLocal()
+        db = SessionLocal()
         try:
-            order = session.get(Order, order_id)
+            order = db.get(Order, order_id)
             if not order:
                 await query.answer("❌ Commande introuvable", show_alert=True)
-                session.close()
+                db.close()
                 return
             
             order.status = 'annulee'
             order.cancelled_by = query.from_user.id
             order.cancelled_at = datetime.now().isoformat()
-            session.commit()
+            db.commit()
         except Exception as e:
-            session.rollback()
+            db.rollback()
             print(f"Erreur annulation commande: {e}")
             await query.answer("❌ Erreur", show_alert=True)
-            session.close()
+            db.close()
             return
         finally:
-            session.close()
+            db.close()
         
         # Modifier tous les messages admin
         cancelled_text = (
@@ -1413,12 +1414,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("admin_restore_"):
         order_id = int(data.replace("admin_restore_", ""))
         
-        session = SessionLocal()
+        db = SessionLocal()
         try:
-            order = session.get(Order, order_id)
+            order = db.get(Order, order_id)
             if not order:
                 await query.answer("❌ Commande introuvable", show_alert=True)
-                session.close()
+                db.close()
                 return
             
             # Récupérer les infos avant de remettre en attente
@@ -1440,16 +1441,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             order.taken_at = None
             
             # Supprimer les anciens messages admin
-            session.query(OrderMessage).filter(OrderMessage.order_id == order_id).delete()
-            session.commit()
+            db.query(OrderMessage).filter(OrderMessage.order_id == order_id).delete()
+            db.commit()
         except Exception as e:
-            session.rollback()
+            db.rollback()
             print(f"Erreur remise en ligne: {e}")
             await query.answer("❌ Erreur", show_alert=True)
-            session.close()
+            db.close()
             return
         finally:
-            session.close()
+            db.close()
         
         # Renvoyer aux admins
         await resend_order_to_all_admins_async(
@@ -1473,14 +1474,14 @@ async def handle_payment_proof(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = user.id
     username = user.username or f"User_{user_id}"
 
-    session = SessionLocal()
+    db = SessionLocal()
     try:
-        pending_orders = session.query(Order).filter(
+        pending_orders = db.query(Order).filter(
             Order.user_id == user_id,
             Order.status == 'en_attente'
         ).order_by(Order.id.desc()).all()
     finally:
-        session.close()
+        db.close()
 
     if not pending_orders:
         await update.message.reply_text(
@@ -1510,7 +1511,7 @@ async def handle_payment_proof(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("✋ Prendre en charge", callback_data=f"admin_take_{order.id}")]
     ])
 
-    session = SessionLocal()
+    db = SessionLocal()
     try:
         for admin_id in ADMIN_IDS:
             try:
@@ -1526,14 +1527,14 @@ async def handle_payment_proof(update: Update, context: ContextTypes.DEFAULT_TYP
                     reply_markup=keyboard
                 )
                 om = OrderMessage(order_id=order.id, admin_id=admin_id, message_id=msg.message_id)
-                session.add(om)
+                db.add(om)
             except Exception as e:
                 print(f"Erreur envoi admin {admin_id}: {e}")
-        session.commit()
+        db.commit()
     except Exception as e:
-        session.rollback()
+        db.rollback()
     finally:
-        session.close()
+        db.close()
 
     await update.message.reply_text(
         f"✅ *Preuve reçue !*\n\n"
