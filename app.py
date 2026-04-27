@@ -461,7 +461,6 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <button class="nav-item" onclick="showPage('users',this)"><span class="icon">👥</span>Utilisateurs</button>
     <div class="nav-section">Configuration</div>
     <button class="nav-item" onclick="showPage('manager',this)"><span class="icon">🎛️</span>Services</button>
-    <button class="nav-item" onclick="showPage('simulate',this)"><span class="icon">🎲</span>Simuler</button>
   </nav>
   <div class="sidebar-footer">
     <a href="/logout" class="nav-item" style="text-decoration:none"><span class="icon">🚪</span>Déconnexion</a>
@@ -564,37 +563,6 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     </div>
   </div>
 
-  <!-- PAGE SIMULATE -->
-  <div id="page-simulate" class="page-hidden">
-    <div class="topbar"><h2>Simuler des commandes</h2></div>
-    <div class="content">
-      <div class="table-wrap" style="padding:28px;max-width:520px">
-        <h3 style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:24px">🎲 Génération de données test</h3>
-        <div class="modal-field">
-          <label>Nombre de commandes</label>
-          <input type="number" id="sim-count" value="5" min="1" max="100" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;width:100%;font-size:14px;outline:none">
-        </div>
-        <div class="modal-field">
-          <label>Service</label>
-          <select id="sim-service" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;width:100%;font-size:14px;outline:none">
-            <option value="all">Tous les services</option>
-          </select>
-        </div>
-        <div class="modal-field">
-          <label>Statut</label>
-          <select id="sim-status" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;width:100%;font-size:14px;outline:none">
-            <option value="terminee">Terminée</option>
-            <option value="en_attente">En attente</option>
-            <option value="en_cours">En cours</option>
-            <option value="annulee">Annulée</option>
-          </select>
-        </div>
-        <button class="btn-primary" onclick="runSimulate()" style="width:100%;margin-top:8px;padding:12px">Générer</button>
-        <div id="sim-result" style="margin-top:16px;font-size:13px;color:var(--text2)"></div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- MODALS -->
 <div id="modal-overlay" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal()">
@@ -631,7 +599,6 @@ function showPage(page, btn) {
   if (page === 'orders') loadOrders();
   if (page === 'users') loadUsers();
   if (page === 'manager') loadManager();
-  if (page === 'simulate') loadSimServices();
 }
 
 // === DASHBOARD ===
@@ -834,20 +801,6 @@ async function sendLink() {
   closeLinkModal();
 }
 
-// SIMULATE
-async function loadSimServices() {
-  const r = await fetch('/api/services'); const d = await r.json();
-  const sel = document.getElementById('sim-service');
-  sel.innerHTML = '<option value="all">Tous les services</option>' + d.services.map(s => `<option value="${s.service_key}">${s.emoji} ${s.display_name}</option>`).join('');
-}
-async function runSimulate() {
-  const el = document.getElementById('sim-result');
-  el.textContent = 'Génération en cours...';
-  const r = await fetch('/api/simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count:parseInt(document.getElementById('sim-count').value),service:document.getElementById('sim-service').value,status:document.getElementById('sim-status').value})});
-  const d = await r.json();
-  el.textContent = d.success ? `✅ ${d.created} commande(s) créée(s)` : `❌ Erreur: ${d.error}`;
-  el.style.color = d.success ? 'var(--green)' : 'var(--red)';
-}
 
 // ORDER ACTIONS
 async function takeOrder(id) { await fetch('/api/order/'+id+'/take',{method:'POST'}); loadAll(); }
