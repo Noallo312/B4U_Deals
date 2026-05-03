@@ -1,8 +1,8 @@
 # Full app.py - Dashboard Utilisateurs + Gestion commandes Telegram + Stats cumulatives + Manager React
-# MODIFICATIONS PRINCIPALES:
-# - Les infos restent visibles quand on prend une commande
-# - Tous les nouveaux services ajoutés et organisés par catégorie
-# - Catégories: Streaming, Sport, Musique, IA, Fitness, VPN, Logiciels, Éducation
+# BUGS CORRIGÉS:
+# 1. Validation commande bot : garde anti-double-comptage sur admin_complete_
+# 2. Dashboard services : champ "visible" ajouté dans le modal edit + envoyé en PUT
+# 3. Budget double-comptage : vérification status != 'terminee' avant d'ajouter aux stats (route Flask)
 
 import os
 import requests
@@ -38,7 +38,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# ========== SERVICES_CONFIG COMPLET - Tous les services organisés par catégorie ==========
+# ========== SERVICES_CONFIG COMPLET ==========
 SERVICES_CONFIG = {
     # ========== CATÉGORIE STREAMING ==========
     'netflix': {
@@ -142,7 +142,7 @@ SERVICES_CONFIG = {
             'standard': {'label': 'Brazzers', 'price': 3.50, 'cost': 0.50}
         }
     },
-    
+
     # ========== CATÉGORIE SPORT ==========
     'ufc': {
         'name': '🥊 UFC Fight Pass',
@@ -171,7 +171,7 @@ SERVICES_CONFIG = {
             'standard': {'label': 'DAZN', 'price': 8.00, 'cost': 1.50}
         }
     },
-    
+
     # ========== CATÉGORIE MUSIQUE ==========
     'spotify': {
         'name': '🎧 Spotify Premium',
@@ -192,7 +192,7 @@ SERVICES_CONFIG = {
             'a_vie': {'label': 'Deezer Premium à vie', 'price': 8.00, 'cost': 1.50}
         }
     },
-    
+
     # ========== CATÉGORIE IA ==========
     'chatgpt': {
         'name': '🤖 ChatGPT+',
@@ -204,7 +204,7 @@ SERVICES_CONFIG = {
             '1_an': {'label': 'ChatGPT+ 1 an', 'price': 18.00, 'cost': 3.00}
         }
     },
-    
+
     # ========== CATÉGORIE FITNESS ==========
     'basicfit': {
         'name': '🏋️ Basic-Fit',
@@ -224,7 +224,7 @@ SERVICES_CONFIG = {
             '1_an': {'label': 'Fitness Park 1 an', 'price': 30.00, 'cost': 5.00}
         }
     },
-    
+
     # ========== CATÉGORIE VPN ==========
     'ipvanish': {
         'name': '🔒 IPVanish VPN',
@@ -262,7 +262,7 @@ SERVICES_CONFIG = {
             'standard': {'label': 'NordVPN', 'price': 8.00, 'cost': 1.60}
         }
     },
-    
+
     # ========== CATÉGORIE LOGICIELS ==========
     'filmora': {
         'name': '🎥 Filmora Pro',
@@ -282,7 +282,7 @@ SERVICES_CONFIG = {
             'standard': {'label': 'CapCut Pro', 'price': 4.00, 'cost': 0.80}
         }
     },
-    
+
     # ========== CATÉGORIE ÉDUCATION ==========
     'duolingo': {
         'name': '🦜 Duolingo Premium',
@@ -293,7 +293,7 @@ SERVICES_CONFIG = {
             'standard': {'label': 'Duolingo Premium', 'price': 5.00, 'cost': 1.00}
         }
     },
-    
+
     # ========== CATÉGORIE APPLE ==========
     'appletv_music': {
         'name': '🍎 Apple TV + Music',
@@ -308,8 +308,10 @@ SERVICES_CONFIG = {
         }
     }
 }
+
 SERVICES_CONFIG_IN_MEMORY = {}
 user_states = {}
+
 HTML_LOGIN = '''<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -341,7 +343,7 @@ button:hover{opacity:0.9}
   <div class="logo">
     <div class="logo-icon">🎯</div>
     <h1>B4U Deals</h1>
-    <p>Panneau d'administration</p>
+    <p>Panneau d\'administration</p>
   </div>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   <form method="POST">
@@ -366,11 +368,10 @@ HTML_DASHBOARD = '''<!DOCTYPE html>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0d0f14;--surface:#161920;--surface2:#1e2129;--border:rgba(255,255,255,0.07);--text:#e8eaf0;--text2:rgba(232,234,240,0.5);--accent:#667eea;--accent2:#764ba2;--green:#10b981;--orange:#f59e0b;--red:#ef4444;--blue:#3b82f6}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
-/* SIDEBAR */
+body{font-family:\'DM Sans\',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
 .sidebar{width:240px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;z-index:100}
 .sidebar-logo{padding:24px 20px;border-bottom:1px solid var(--border)}
-.sidebar-logo .name{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff}
+.sidebar-logo .name{font-family:\'Syne\',sans-serif;font-size:18px;font-weight:800;color:#fff}
 .sidebar-logo .sub{font-size:11px;color:var(--text2);margin-top:2px}
 .sidebar-nav{padding:16px 12px;flex:1}
 .nav-section{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text2);padding:0 8px;margin:16px 0 8px}
@@ -379,36 +380,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .nav-item.active{background:linear-gradient(135deg,rgba(102,126,234,0.2),rgba(118,75,162,0.1));color:#fff;border:1px solid rgba(102,126,234,0.25)}
 .nav-item .icon{font-size:16px;width:20px;text-align:center}
 .sidebar-footer{padding:16px 12px;border-top:1px solid var(--border)}
-/* MAIN */
 .main{margin-left:240px;flex:1;min-height:100vh;display:flex;flex-direction:column}
 .topbar{padding:20px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)}
-.topbar h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:#fff}
+.topbar h2{font-family:\'Syne\',sans-serif;font-size:20px;font-weight:700;color:#fff}
 .topbar-right{display:flex;align-items:center;gap:12px}
 .badge{background:rgba(102,126,234,0.15);border:1px solid rgba(102,126,234,0.3);color:var(--accent);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
-.refresh-btn{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text2);padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.refresh-btn{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text2);padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s;font-family:\'DM Sans\',sans-serif}
 .refresh-btn:hover{background:rgba(255,255,255,0.1);color:var(--text)}
 .content{padding:24px 28px;flex:1}
-/* KPI CARDS */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px;transition:transform .15s}
 .kpi:hover{transform:translateY(-2px)}
 .kpi-label{font-size:12px;color:var(--text2);font-weight:500;letter-spacing:0.3px;margin-bottom:10px}
-.kpi-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;color:#fff}
+.kpi-value{font-family:\'Syne\',sans-serif;font-size:28px;font-weight:700;color:#fff}
 .kpi-sub{font-size:12px;color:var(--text2);margin-top:4px}
 .kpi.green .kpi-value{color:var(--green)}
 .kpi.orange .kpi-value{color:var(--orange)}
 .kpi.blue .kpi-value{color:var(--blue)}
-/* FILTERS */
 .filters{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
-.filter-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.filter-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s;font-family:\'DM Sans\',sans-serif}
 .filter-btn:hover,.filter-btn.active{background:rgba(102,126,234,0.15);border-color:rgba(102,126,234,0.4);color:var(--accent)}
-.search-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;margin-left:auto;width:220px}
+.search-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;outline:none;font-family:\'DM Sans\',sans-serif;margin-left:auto;width:220px}
 .search-input::placeholder{color:var(--text2)}
 .search-input:focus{border-color:rgba(102,126,234,0.4)}
-/* TABLE */
 .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
 .table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.table-header h3{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff}
+.table-header h3{font-family:\'Syne\',sans-serif;font-size:15px;font-weight:700;color:#fff}
 table{width:100%;border-collapse:collapse}
 thead tr{background:var(--surface2)}
 th{padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border)}
@@ -420,7 +417,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 .status-badge.cours{background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25)}
 .status-badge.terminee{background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25)}
 .status-badge.annulee{background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)}
-.action-btn{padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;transition:opacity .15s}
+.action-btn{padding:5px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:\'DM Sans\',sans-serif;transition:opacity .15s}
 .action-btn:hover{opacity:0.8}
 .btn-take{background:rgba(59,130,246,0.2);color:#60a5fa;border:1px solid rgba(59,130,246,0.3)}
 .btn-complete{background:rgba(16,185,129,0.2);color:#34d399;border:1px solid rgba(16,185,129,0.3)}
@@ -433,18 +430,17 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 .dot.terminee{background:#34d399}
 .dot.annulee{background:#f87171}
 .page-hidden{display:none!important}
-/* Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:500px}
-.modal h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:20px}
+.modal h3{font-family:\'Syne\',sans-serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:20px}
 .modal-field{margin-bottom:16px}
 .modal-field label{display:block;font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
-.modal-field input,.modal-field select{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none}
+.modal-field input,.modal-field select{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:14px;font-family:\'DM Sans\',sans-serif;outline:none}
 .modal-field select option{background:var(--surface2);color:var(--text)}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
-.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);border:none;color:#fff;padding:10px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer}
-.btn-ghost{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text2);padding:10px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer}
-.send-link-btn{background:rgba(102,126,234,0.15);border:1px solid rgba(102,126,234,0.3);color:var(--accent);padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);border:none;color:#fff;padding:10px 20px;border-radius:8px;font-family:\'Syne\',sans-serif;font-weight:700;font-size:14px;cursor:pointer}
+.btn-ghost{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text2);padding:10px 20px;border-radius:8px;font-family:\'DM Sans\',sans-serif;font-size:14px;cursor:pointer}
+.send-link-btn{background:rgba(102,126,234,0.15);border:1px solid rgba(102,126,234,0.3);color:var(--accent);padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:\'DM Sans\',sans-serif}
 </style>
 </head>
 <body>
@@ -456,11 +452,11 @@ tr:hover td{background:rgba(255,255,255,0.02)}
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">Principal</div>
-    <button class="nav-item active" onclick="showPage('dashboard',this)"><span class="icon">📊</span>Dashboard</button>
-    <button class="nav-item" onclick="showPage('orders',this)"><span class="icon">📦</span>Commandes</button>
-    <button class="nav-item" onclick="showPage('users',this)"><span class="icon">👥</span>Utilisateurs</button>
+    <button class="nav-item active" onclick="showPage(\'dashboard\',this)"><span class="icon">📊</span>Dashboard</button>
+    <button class="nav-item" onclick="showPage(\'orders\',this)"><span class="icon">📦</span>Commandes</button>
+    <button class="nav-item" onclick="showPage(\'users\',this)"><span class="icon">👥</span>Utilisateurs</button>
     <div class="nav-section">Configuration</div>
-    <button class="nav-item" onclick="showPage('manager',this)"><span class="icon">🎛️</span>Services</button>
+    <button class="nav-item" onclick="showPage(\'manager\',this)"><span class="icon">🎛️</span>Services</button>
   </nav>
   <div class="sidebar-footer">
     <a href="/logout" class="nav-item" style="text-decoration:none"><span class="icon">🚪</span>Déconnexion</a>
@@ -471,7 +467,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
   <!-- PAGE DASHBOARD -->
   <div id="page-dashboard">
     <div class="topbar">
-      <h2>Vue d'ensemble</h2>
+      <h2>Vue d\'ensemble</h2>
       <div class="topbar-right">
         <span class="badge" id="live-badge">● Live</span>
         <button class="refresh-btn" onclick="loadAll()">↻ Actualiser</button>
@@ -481,13 +477,13 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div class="kpi-grid">
         <div class="kpi"><div class="kpi-label">📦 Total commandes</div><div class="kpi-value" id="kpi-total">—</div><div class="kpi-sub">depuis le début</div></div>
         <div class="kpi orange"><div class="kpi-label">⏳ En attente</div><div class="kpi-value" id="kpi-pending">—</div><div class="kpi-sub">à traiter</div></div>
-        <div class="kpi green"><div class="kpi-label">💰 Chiffre d'affaires</div><div class="kpi-value" id="kpi-revenue">—</div><div class="kpi-sub">cumulé total</div></div>
+        <div class="kpi green"><div class="kpi-label">💰 Chiffre d\'affaires</div><div class="kpi-value" id="kpi-revenue">—</div><div class="kpi-sub">cumulé total</div></div>
         <div class="kpi blue"><div class="kpi-label">💵 Bénéfice net</div><div class="kpi-value" id="kpi-profit">—</div><div class="kpi-sub">cumulé total</div></div>
       </div>
       <div class="table-wrap">
         <div class="table-header">
           <h3>Commandes récentes</h3>
-          <button class="filter-btn" onclick="showPage('orders',document.querySelectorAll('.nav-item')[1])">Voir tout →</button>
+          <button class="filter-btn" onclick="showPage(\'orders\',document.querySelectorAll(\'.nav-item\')[1])">Voir tout →</button>
         </div>
         <table>
           <thead><tr><th>#</th><th>Service</th><th>Client</th><th>Montant</th><th>Paiement</th><th>Statut</th><th>Actions</th></tr></thead>
@@ -508,11 +504,11 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     </div>
     <div class="content">
       <div class="filters">
-        <button class="filter-btn active" onclick="filterOrders('all',this)">Toutes</button>
-        <button class="filter-btn" onclick="filterOrders('en_attente',this)">⏳ Attente</button>
-        <button class="filter-btn" onclick="filterOrders('en_cours',this)">🔵 En cours</button>
-        <button class="filter-btn" onclick="filterOrders('terminee',this)">✅ Terminées</button>
-        <button class="filter-btn" onclick="filterOrders('annulee',this)">❌ Annulées</button>
+        <button class="filter-btn active" onclick="filterOrders(\'all\',this)">Toutes</button>
+        <button class="filter-btn" onclick="filterOrders(\'en_attente\',this)">⏳ Attente</button>
+        <button class="filter-btn" onclick="filterOrders(\'en_cours\',this)">🔵 En cours</button>
+        <button class="filter-btn" onclick="filterOrders(\'terminee\',this)">✅ Terminées</button>
+        <button class="filter-btn" onclick="filterOrders(\'annulee\',this)">❌ Annulées</button>
         <input type="text" class="search-input" id="orders-search" placeholder="🔍 Rechercher..." oninput="renderOrders()">
       </div>
       <div class="table-wrap">
@@ -562,7 +558,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div id="manager-content"></div>
     </div>
   </div>
-
+</div>
 
 <!-- MODALS -->
 <div id="modal-overlay" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal()">
@@ -586,146 +582,147 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 <script>
 let allOrders = [];
 let allUsers = [];
-let currentFilter = 'all';
+let currentFilter = \'all\';
 let currentLinkOrderId = null;
 
-// Navigation
 function showPage(page, btn) {
-  document.querySelectorAll('[id^="page-"]').forEach(p => p.classList.add('page-hidden'));
-  document.getElementById('page-' + page).classList.remove('page-hidden');
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  if (page === 'dashboard') loadDashboard();
-  if (page === 'orders') loadOrders();
-  if (page === 'users') loadUsers();
-  if (page === 'manager') loadManager();
+  document.querySelectorAll(\'[id^="page-"]\').forEach(p => p.classList.add(\'page-hidden\'));
+  document.getElementById(\'page-\' + page).classList.remove(\'page-hidden\');
+  document.querySelectorAll(\'.nav-item\').forEach(b => b.classList.remove(\'active\'));
+  if (btn) btn.classList.add(\'active\');
+  if (page === \'dashboard\') loadDashboard();
+  if (page === \'orders\') loadOrders();
+  if (page === \'users\') loadUsers();
+  if (page === \'manager\') loadManager();
 }
 
 // === DASHBOARD ===
 async function loadDashboard() {
-  const r = await fetch('/api/dashboard'); const d = await r.json();
-  document.getElementById('kpi-total').textContent = d.stats.total_orders;
-  document.getElementById('kpi-pending').textContent = d.stats.pending_orders;
-  document.getElementById('kpi-revenue').textContent = d.stats.revenue.toFixed(2) + '€';
-  document.getElementById('kpi-profit').textContent = d.stats.profit.toFixed(2) + '€';
-  const tbody = document.getElementById('recent-orders');
+  const r = await fetch(\'/api/dashboard\'); const d = await r.json();
+  document.getElementById(\'kpi-total\').textContent = d.stats.total_orders;
+  document.getElementById(\'kpi-pending\').textContent = d.stats.pending_orders;
+  document.getElementById(\'kpi-revenue\').textContent = d.stats.revenue.toFixed(2) + \'€\';
+  document.getElementById(\'kpi-profit\').textContent = d.stats.profit.toFixed(2) + \'€\';
+  const tbody = document.getElementById(\'recent-orders\');
   const recent = d.orders.slice(0, 10);
-  if (!recent.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Aucune commande</td></tr>'; return; }
+  if (!recent.length) { tbody.innerHTML = \'<tr><td colspan="7" class="empty">Aucune commande</td></tr>\'; return; }
   tbody.innerHTML = recent.map(o => `<tr>
     <td><strong>#${o.id}</strong></td>
-    <td>${o.service}<br><small style="color:var(--text2)">${o.plan||''}</small></td>
-    <td>${o.first_name||''} ${o.last_name||''}<br><small style="color:var(--text2)">@${o.username||'N/A'}</small></td>
+    <td>${o.service}<br><small style="color:var(--text2)">${o.plan||\'\'}</small></td>
+    <td>${o.first_name||\'\'} ${o.last_name||\'\'}<br><small style="color:var(--text2)">@${o.username||\'N/A\'}</small></td>
     <td><strong>${o.price}€</strong></td>
-    <td>${o.payment_method||'—'}</td>
+    <td>${o.payment_method||\'—\'}</td>
     <td>${statusBadge(o.status)}</td>
     <td>${actionBtns(o)}</td>
-  </tr>`).join('');
+  </tr>`).join(\'\');
 }
 
 // === ORDERS ===
 async function loadOrders() {
-  const r = await fetch('/api/dashboard'); const d = await r.json();
+  const r = await fetch(\'/api/dashboard\'); const d = await r.json();
   allOrders = d.orders;
-  document.getElementById('orders-count').textContent = d.orders.length;
+  document.getElementById(\'orders-count\').textContent = d.orders.length;
   renderOrders();
 }
 function filterOrders(f, btn) {
   currentFilter = f;
-  document.querySelectorAll('#page-orders .filter-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  document.querySelectorAll(\'#page-orders .filter-btn\').forEach(b => b.classList.remove(\'active\'));
+  if (btn) btn.classList.add(\'active\');
   renderOrders();
 }
 function renderOrders() {
-  const q = (document.getElementById('orders-search').value||''). toLowerCase();
-  let list = allOrders.filter(o => currentFilter === 'all' || o.status === currentFilter);
+  const q = (document.getElementById(\'orders-search\').value||\'\').toLowerCase();
+  let list = allOrders.filter(o => currentFilter === \'all\' || o.status === currentFilter);
   if (q) list = list.filter(o => JSON.stringify(o).toLowerCase().includes(q));
-  const tbody = document.getElementById('orders-table');
-  if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">Aucune commande</td></tr>'; return; }
+  const tbody = document.getElementById(\'orders-table\');
+  if (!list.length) { tbody.innerHTML = \'<tr><td colspan="8" class="empty">Aucune commande</td></tr>\'; return; }
   tbody.innerHTML = list.map(o => `<tr>
     <td><strong>#${o.id}</strong></td>
-    <td>${o.service}<br><small style="color:var(--text2)">${o.plan||''}</small></td>
-    <td>${o.first_name||''} ${o.last_name||''}<br><small style="color:var(--text2)">@${o.username||'N/A'}</small></td>
-    <td style="color:var(--text2);font-size:13px">${o.email||'—'}</td>
+    <td>${o.service}<br><small style="color:var(--text2)">${o.plan||\'\'}</small></td>
+    <td>${o.first_name||\'\'} ${o.last_name||\'\'}<br><small style="color:var(--text2)">@${o.username||\'N/A\'}</small></td>
+    <td style="color:var(--text2);font-size:13px">${o.email||\'—\'}</td>
     <td><strong>${o.price}€</strong><br><small style="color:var(--text2)">coût ${o.cost||0}€</small></td>
-    <td>${o.payment_method||'—'}</td>
+    <td>${o.payment_method||\'—\'}</td>
     <td>${statusBadge(o.status)}</td>
     <td style="white-space:nowrap">${actionBtns(o)} <button class="send-link-btn" onclick="openLinkModal(${o.id})">🔗</button></td>
-  </tr>`).join('');
+  </tr>`).join(\'\');
 }
 
 // === USERS ===
 async function loadUsers() {
-  const r = await fetch('/api/users'); const d = await r.json();
+  const r = await fetch(\'/api/users\'); const d = await r.json();
   allUsers = d.users;
-  document.getElementById('users-count').textContent = d.users.length;
-  document.getElementById('u-total').textContent = d.stats.total_users;
-  document.getElementById('u-active').textContent = d.stats.active_users;
-  document.getElementById('u-conv').textContent = d.stats.conversion_rate + '%';
-  document.getElementById('u-new').textContent = d.stats.new_users;
+  document.getElementById(\'users-count\').textContent = d.users.length;
+  document.getElementById(\'u-total\').textContent = d.stats.total_users;
+  document.getElementById(\'u-active\').textContent = d.stats.active_users;
+  document.getElementById(\'u-conv\').textContent = d.stats.conversion_rate + \'%\';
+  document.getElementById(\'u-new\').textContent = d.stats.new_users;
   renderUsers();
 }
 function renderUsers() {
-  const q = (document.getElementById('users-search').value||''). toLowerCase();
+  const q = (document.getElementById(\'users-search\').value||\'\').toLowerCase();
   let list = allUsers;
   if (q) list = list.filter(u => JSON.stringify(u).toLowerCase().includes(q));
-  const tbody = document.getElementById('users-table');
-  if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Aucun utilisateur</td></tr>'; return; }
+  const tbody = document.getElementById(\'users-table\');
+  if (!list.length) { tbody.innerHTML = \'<tr><td colspan="6" class="empty">Aucun utilisateur</td></tr>\'; return; }
   tbody.innerHTML = list.map(u => `<tr>
     <td><strong>${u.first_name} ${u.last_name}</strong></td>
     <td>@${u.username}</td>
     <td style="color:var(--text2);font-size:12px">${u.user_id}</td>
-    <td><span class="status-badge cours">${u.total_orders} commande${u.total_orders>1?'s':''}</span></td>
+    <td><span class="status-badge cours">${u.total_orders} commande${u.total_orders>1?\'s\':\'\'}</span></td>
     <td style="color:var(--text2);font-size:13px">${fmtDate(u.first_seen)}</td>
     <td style="color:var(--text2);font-size:13px">${fmtDate(u.last_activity)}</td>
-  </tr>`).join('');
+  </tr>`).join(\'\');
 }
 
 // === MANAGER ===
 async function loadManager() {
-  const r = await fetch('/api/services'); const d = await r.json();
-  const cats = {streaming:'🎬 Streaming',sport:'⚽ Sport',music:'🎧 Musique',ai:'🤖 IA',fitness:'🏋️ Fitness',vpn:'🔒 VPN',software:'💻 Logiciels',education:'📚 Éducation',apple:'🍎 Apple'};
+  const r = await fetch(\'/api/services\'); const d = await r.json();
+  const cats = {streaming:\'🎬 Streaming\',sport:\'⚽ Sport\',music:\'🎧 Musique\',ai:\'🤖 IA\',fitness:\'🏋️ Fitness\',vpn:\'🔒 VPN\',software:\'💻 Logiciels\',education:\'📚 Éducation\',apple:\'🍎 Apple\'};
   const bycat = {};
-  d.services.forEach(s => { const c = s.category||'other'; if(!bycat[c]) bycat[c]=[]; bycat[c].push(s); });
-  let html = '';
+  d.services.forEach(s => { const c = s.category||\'other\'; if(!bycat[c]) bycat[c]=[]; bycat[c].push(s); });
+  let html = \'\';
   for (const [cat, svcs] of Object.entries(bycat)) {
     html += `<div style="margin-bottom:24px">
       <h4 style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">${cats[cat]||cat}</h4>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Service</th><th>Plan</th><th>Prix</th><th>Coût</th><th>Marge</th><th>Statut</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Service</th><th>Plan</th><th>Prix</th><th>Coût</th><th>Marge</th><th>Statut</th><th>Visible</th><th>Actions</th></tr></thead>
           <tbody>`;
     svcs.forEach(s => {
       if (s.plans.length === 0) {
         html += `<tr><td><strong>${s.emoji} ${s.display_name}</strong></td><td colspan="4" style="color:var(--text2)">Aucun plan</td>
-          <td>${s.active ? '<span class="status-badge terminee">Actif</span>' : '<span class="status-badge annulee">Inactif</span>'}</td>
-          <td><button class="action-btn btn-take" onclick='editService(${JSON.stringify(s)})'>✏️</button>
-              <button class="action-btn btn-cancel" onclick="deleteService('${s.service_key}')">🗑️</button>
-              <button class="action-btn btn-restore" onclick='addPlanModal("${s.service_key}")'>+ Plan</button></td></tr>`;
+          <td>${s.active ? \'<span class="status-badge terminee">Actif</span>\' : \'<span class="status-badge annulee">Inactif</span>\'}</td>
+          <td>${s.visible ? \'<span class="status-badge cours">Oui</span>\' : \'<span class="status-badge annulee">Non</span>\'}</td>
+          <td><button class="action-btn btn-take" onclick=\'editService(${JSON.stringify(s)})\'>✏️</button>
+              <button class="action-btn btn-cancel" onclick="deleteService(\'${s.service_key}\')">🗑️</button>
+              <button class="action-btn btn-restore" onclick=\'addPlanModal("${s.service_key}")\'>+ Plan</button></td></tr>`;
       } else {
         s.plans.forEach((p, i) => {
           const margin = ((p.price - p.cost) / p.price * 100).toFixed(0);
           html += `<tr>
-            ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:15px"><strong>${s.emoji} ${s.display_name}</strong><br><small style="color:var(--text2)">${s.service_key}</small></td>` : ''}
+            ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:15px"><strong>${s.emoji} ${s.display_name}</strong><br><small style="color:var(--text2)">${s.service_key}</small></td>` : \'\'}
             <td>${p.label}</td><td><strong>${p.price}€</strong></td><td>${p.cost}€</td>
-            <td><span style="color:${margin>50?'#34d399':'#fbbf24'}">${margin}%</span></td>
-            ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:15px">${s.active ? '<span class="status-badge terminee">Actif</span>' : '<span class="status-badge annulee">Inactif</span>'}</td>` : ''}
+            <td><span style="color:${margin>50?\'#34d399\':\'#fbbf24\'}">${margin}%</span></td>
+            ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:15px">${s.active ? \'<span class="status-badge terminee">Actif</span>\' : \'<span class="status-badge annulee">Inactif</span>\'}</td>` : \'\'}
+            ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:15px">${s.visible ? \'<span class="status-badge cours">Oui</span>\' : \'<span class="status-badge annulee">Non</span>\'}</td>` : \'\'}
             ${i===0 ? `<td rowspan="${s.plans.length}" style="vertical-align:top;padding-top:12px;white-space:nowrap">
-              <button class="action-btn btn-take" onclick='editService(${JSON.stringify(s)})'>✏️</button>
-              <button class="action-btn btn-cancel" onclick="deleteService('${s.service_key}')">🗑️</button>
-              <button class="action-btn btn-restore" onclick='addPlanModal("${s.service_key}")'>+ Plan</button>
-              <button class="action-btn" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)" onclick='deletePlan("${s.service_key}","${p.plan_key}")'>✕</button>
-              </td>` : `<td><button class="action-btn" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)" onclick='deletePlan("${s.service_key}","${p.plan_key}")'>✕</button></td>`}
+              <button class="action-btn btn-take" onclick=\'editService(${JSON.stringify(s)})\'>✏️</button>
+              <button class="action-btn btn-cancel" onclick="deleteService(\'${s.service_key}\')">🗑️</button>
+              <button class="action-btn btn-restore" onclick=\'addPlanModal("${s.service_key}")\'>+ Plan</button>
+              <button class="action-btn" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)" onclick=\'deletePlan("${s.service_key}","${p.plan_key}")\'>✕</button>
+              </td>` : `<td><button class="action-btn" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)" onclick=\'deletePlan("${s.service_key}","${p.plan_key}")\'>✕</button></td>`}
           </tr>`;
         });
       }
     });
     html += `</tbody></table></div></div>`;
   }
-  document.getElementById('manager-content').innerHTML = html;
+  document.getElementById(\'manager-content\').innerHTML = html;
 }
 
 function openAddServiceModal() {
-  document.getElementById('modal-content').innerHTML = `
+  document.getElementById(\'modal-content\').innerHTML = `
     <h3>➕ Nouveau service</h3>
     <div class="modal-field"><label>Clé (ex: netflix)</label><input id="m-key" placeholder="netflix"></div>
     <div class="modal-field"><label>Emoji</label><input id="m-emoji" placeholder="🎬"></div>
@@ -737,38 +734,76 @@ function openAddServiceModal() {
       <button class="btn-ghost" onclick="closeModal()">Annuler</button>
       <button class="btn-primary" onclick="createService()">Créer</button>
     </div>`;
-  document.getElementById('modal-overlay').style.display = 'flex';
+  document.getElementById(\'modal-overlay\').style.display = \'flex\';
 }
+
 async function createService() {
-  const r = await fetch('/api/services', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({service_key:document.getElementById('m-key').value,emoji:document.getElementById('m-emoji').value,display_name:document.getElementById('m-name').value,category:document.getElementById('m-cat').value,active:true,visible:true})});
+  const r = await fetch(\'/api/services\', {method:\'POST\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({service_key:document.getElementById(\'m-key\').value,emoji:document.getElementById(\'m-emoji\').value,display_name:document.getElementById(\'m-name\').value,category:document.getElementById(\'m-cat\').value,active:true,visible:true})});
   closeModal(); loadManager();
 }
+
+// FIX: editService inclut maintenant le champ "visible"
 function editService(s) {
-  document.getElementById('modal-content').innerHTML = `
+  document.getElementById(\'modal-content\').innerHTML = `
     <h3>✏️ Modifier ${s.emoji} ${s.display_name}</h3>
     <div class="modal-field"><label>Emoji</label><input id="m-emoji" value="${s.emoji}"></div>
     <div class="modal-field"><label>Nom</label><input id="m-name" value="${s.display_name}"></div>
     <div class="modal-field"><label>Catégorie</label>
-      <select id="m-cat"><option value="streaming" ${s.category==='streaming'?'selected':''}>streaming</option><option value="sport" ${s.category==='sport'?'selected':''}>sport</option><option value="music" ${s.category==='music'?'selected':''}>music</option><option value="ai" ${s.category==='ai'?'selected':''}>ai</option><option value="fitness" ${s.category==='fitness'?'selected':''}>fitness</option><option value="vpn" ${s.category==='vpn'?'selected':''}>vpn</option><option value="software" ${s.category==='software'?'selected':''}>software</option><option value="education" ${s.category==='education'?'selected':''}>education</option><option value="apple" ${s.category==='apple'?'selected':''}>apple</option></select>
+      <select id="m-cat">
+        <option value="streaming" ${s.category===\'streaming\'?\'selected\':\'\'}>streaming</option>
+        <option value="sport" ${s.category===\'sport\'?\'selected\':\'\'}>sport</option>
+        <option value="music" ${s.category===\'music\'?\'selected\':\'\'}>music</option>
+        <option value="ai" ${s.category===\'ai\'?\'selected\':\'\'}>ai</option>
+        <option value="fitness" ${s.category===\'fitness\'?\'selected\':\'\'}>fitness</option>
+        <option value="vpn" ${s.category===\'vpn\'?\'selected\':\'\'}>vpn</option>
+        <option value="software" ${s.category===\'software\'?\'selected\':\'\'}>software</option>
+        <option value="education" ${s.category===\'education\'?\'selected\':\'\'}>education</option>
+        <option value="apple" ${s.category===\'apple\'?\'selected\':\'\'}>apple</option>
+      </select>
     </div>
-    <div class="modal-field"><label>Actif</label><select id="m-active"><option value="1" ${s.active?'selected':''}>Oui</option><option value="0" ${!s.active?'selected':''}>Non</option></select></div>
+    <div class="modal-field"><label>Actif</label>
+      <select id="m-active">
+        <option value="1" ${s.active?\'selected\':\'\'}>Oui</option>
+        <option value="0" ${!s.active?\'selected\':\'\'}>Non</option>
+      </select>
+    </div>
+    <div class="modal-field"><label>Visible (bot Telegram)</label>
+      <select id="m-visible">
+        <option value="1" ${s.visible?\'selected\':\'\'}>Oui</option>
+        <option value="0" ${!s.visible?\'selected\':\'\'}>Non</option>
+      </select>
+    </div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeModal()">Annuler</button>
-      <button class="btn-primary" onclick="updateService('${s.service_key}')">Sauvegarder</button>
+      <button class="btn-primary" onclick="updateService(\'${s.service_key}\')">Sauvegarder</button>
     </div>`;
-  document.getElementById('modal-overlay').style.display = 'flex';
+  document.getElementById(\'modal-overlay\').style.display = \'flex\';
 }
+
+// FIX: updateService envoie maintenant "visible" correctement
 async function updateService(key) {
-  await fetch('/api/services/'+key, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji:document.getElementById('m-emoji').value,display_name:document.getElementById('m-name').value,category:document.getElementById('m-cat').value,active:document.getElementById('m-active').value==='1'})});
+  await fetch(\'/api/services/\'+key, {
+    method:\'PUT\',
+    headers:{\'Content-Type\':\'application/json\'},
+    body:JSON.stringify({
+      emoji: document.getElementById(\'m-emoji\').value,
+      display_name: document.getElementById(\'m-name\').value,
+      category: document.getElementById(\'m-cat\').value,
+      active: document.getElementById(\'m-active\').value === \'1\',
+      visible: document.getElementById(\'m-visible\').value === \'1\'
+    })
+  });
   closeModal(); loadManager();
 }
+
 async function deleteService(key) {
-  if(!confirm('Supprimer ce service ?')) return;
-  await fetch('/api/services/'+key, {method:'DELETE'});
+  if(!confirm(\'Supprimer ce service ?\')) return;
+  await fetch(\'/api/services/\'+key, {method:\'DELETE\'});
   loadManager();
 }
+
 function addPlanModal(serviceKey) {
-  document.getElementById('modal-content').innerHTML = `
+  document.getElementById(\'modal-content\').innerHTML = `
     <h3>➕ Ajouter un plan</h3>
     <div class="modal-field"><label>Clé du plan (ex: standard)</label><input id="p-key" placeholder="standard"></div>
     <div class="modal-field"><label>Label</label><input id="p-label" placeholder="Netflix Premium"></div>
@@ -776,55 +811,57 @@ function addPlanModal(serviceKey) {
     <div class="modal-field"><label>Coût (€)</label><input id="p-cost" type="number" step="0.01" placeholder="1.50"></div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeModal()">Annuler</button>
-      <button class="btn-primary" onclick="createPlan('${serviceKey}')">Ajouter</button>
+      <button class="btn-primary" onclick="createPlan(\'${serviceKey}\')">Ajouter</button>
     </div>`;
-  document.getElementById('modal-overlay').style.display = 'flex';
+  document.getElementById(\'modal-overlay\').style.display = \'flex\';
 }
+
 async function createPlan(serviceKey) {
-  await fetch('/api/services/'+serviceKey+'/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan_key:document.getElementById('p-key').value,label:document.getElementById('p-label').value,price:parseFloat(document.getElementById('p-price').value),cost:parseFloat(document.getElementById('p-cost').value)})});
+  await fetch(\'/api/services/\'+serviceKey+\'/plans\',{method:\'POST\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({plan_key:document.getElementById(\'p-key\').value,label:document.getElementById(\'p-label\').value,price:parseFloat(document.getElementById(\'p-price\').value),cost:parseFloat(document.getElementById(\'p-cost\').value)})});
   closeModal(); loadManager();
 }
+
 async function deletePlan(serviceKey, planKey) {
-  if(!confirm('Supprimer ce plan ?')) return;
-  await fetch('/api/services/'+serviceKey+'/plans/'+planKey, {method:'DELETE'});
+  if(!confirm(\'Supprimer ce plan ?\')) return;
+  await fetch(\'/api/services/\'+serviceKey+\'/plans/\'+planKey, {method:\'DELETE\'});
   loadManager();
 }
-function closeModal() { document.getElementById('modal-overlay').style.display='none'; }
+
+function closeModal() { document.getElementById(\'modal-overlay\').style.display=\'none\'; }
 
 // SEND LINK
-function openLinkModal(orderId) { currentLinkOrderId = orderId; document.getElementById('link-input').value=''; document.getElementById('link-modal-overlay').style.display='flex'; }
-function closeLinkModal() { document.getElementById('link-modal-overlay').style.display='none'; }
+function openLinkModal(orderId) { currentLinkOrderId = orderId; document.getElementById(\'link-input\').value=\'\'; document.getElementById(\'link-modal-overlay\').style.display=\'flex\'; }
+function closeLinkModal() { document.getElementById(\'link-modal-overlay\').style.display=\'none\'; }
 async function sendLink() {
-  const link = document.getElementById('link-input').value.trim();
+  const link = document.getElementById(\'link-input\').value.trim();
   if (!link) return;
-  await fetch('/api/order/'+currentLinkOrderId+'/send_link', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({link})});
+  await fetch(\'/api/order/\'+currentLinkOrderId+\'/send_link\', {method:\'POST\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({link})});
   closeLinkModal();
 }
 
-
 // ORDER ACTIONS
-async function takeOrder(id) { await fetch('/api/order/'+id+'/take',{method:'POST'}); loadAll(); }
-async function completeOrder(id) { await fetch('/api/order/'+id+'/complete',{method:'POST'}); loadAll(); }
-async function cancelOrder(id) { await fetch('/api/order/'+id+'/cancel',{method:'POST'}); loadAll(); }
-async function restoreOrder(id) { await fetch('/api/order/'+id+'/restore',{method:'POST'}); loadAll(); }
+async function takeOrder(id) { await fetch(\'/api/order/\'+id+\'/take\',{method:\'POST\'}); loadAll(); }
+async function completeOrder(id) { await fetch(\'/api/order/\'+id+\'/complete\',{method:\'POST\'}); loadAll(); }
+async function cancelOrder(id) { await fetch(\'/api/order/\'+id+\'/cancel\',{method:\'POST\'}); loadAll(); }
+async function restoreOrder(id) { await fetch(\'/api/order/\'+id+\'/restore\',{method:\'POST\'}); loadAll(); }
 
-function loadAll() { loadDashboard(); if(!document.getElementById('page-orders').classList.contains('page-hidden')) loadOrders(); }
+function loadAll() { loadDashboard(); if(!document.getElementById(\'page-orders\').classList.contains(\'page-hidden\')) loadOrders(); }
 
 // HELPERS
 function statusBadge(s) {
-  const map = {en_attente:'attente',en_cours:'cours',terminee:'terminee',annulee:'annulee'};
-  const lbl = {en_attente:'⏳ Attente',en_cours:'🔵 En cours',terminee:'✅ Terminée',annulee:'❌ Annulée'};
-  return `<span class="status-badge ${map[s]||''}">${lbl[s]||s}</span>`;
+  const map = {en_attente:\'attente\',en_cours:\'cours\',terminee:\'terminee\',annulee:\'annulee\'};
+  const lbl = {en_attente:\'⏳ Attente\',en_cours:\'🔵 En cours\',terminee:\'✅ Terminée\',annulee:\'❌ Annulée\'};
+  return `<span class="status-badge ${map[s]||\'\'}">${lbl[s]||s}</span>`;
 }
 function actionBtns(o) {
-  let btns = '';
-  if (o.status==='en_attente') btns += `<button class="action-btn btn-take" onclick="takeOrder(${o.id})">Prendre</button> `;
-  if (o.status==='en_cours') btns += `<button class="action-btn btn-complete" onclick="completeOrder(${o.id})">Terminer</button> `;
-  if (o.status!=='annulee') btns += `<button class="action-btn btn-cancel" onclick="cancelOrder(${o.id})">Annuler</button> `;
-  if (o.status==='annulee'||o.status==='terminee') btns += `<button class="action-btn btn-restore" onclick="restoreOrder(${o.id})">↩️</button>`;
+  let btns = \'\';
+  if (o.status===\'en_attente\') btns += `<button class="action-btn btn-take" onclick="takeOrder(${o.id})">Prendre</button> `;
+  if (o.status===\'en_cours\') btns += `<button class="action-btn btn-complete" onclick="completeOrder(${o.id})">Terminer</button> `;
+  if (o.status!==\'annulee\') btns += `<button class="action-btn btn-cancel" onclick="cancelOrder(${o.id})">Annuler</button> `;
+  if (o.status===\'annulee\'||o.status===\'terminee\') btns += `<button class="action-btn btn-restore" onclick="restoreOrder(${o.id})">↩️</button>`;
   return btns;
 }
-function fmtDate(s) { if(!s) return '—'; try { return new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}); } catch(e){return s;} }
+function fmtDate(s) { if(!s) return \'—\'; try { return new Date(s).toLocaleDateString(\'fr-FR\',{day:\'2-digit\',month:\'2-digit\',year:\'numeric\'}); } catch(e){return s;} }
 
 // Init
 loadDashboard();
@@ -849,7 +886,7 @@ if DATABASE_URL.startswith('sqlite'):
 engine = create_engine(DATABASE_URL, connect_args=connect_args, future=True)
 SessionLocal = scoped_session(sessionmaker(bind=engine, expire_on_commit=False))
 Base = declarative_base()
-# Models SQLAlchemy
+
 class Service(Base):
     __tablename__ = 'services'
     service_key = Column(String, primary_key=True)
@@ -916,7 +953,6 @@ class CumulativeStats(Base):
     total_profit = Column(Float, default=0.0)
     last_updated = Column(String, nullable=True)
 
-# Initialisation de la DB
 def init_db():
     Base.metadata.create_all(bind=engine)
     session = SessionLocal()
@@ -1130,6 +1166,7 @@ async def resend_order_to_all_admins_async(context, order_id, service_name, plan
         session.rollback()
     finally:
         session.close()
+
 # Telegram handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -1137,8 +1174,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     first_name = update.message.from_user.first_name or "Utilisateur"
     last_name = update.message.from_user.last_name or ""
     update_user_activity(user_id, username, first_name, last_name)
-    
-    # Menu principal avec TOUTES les catégories (9 au total)
+
     keyboard = [
         [InlineKeyboardButton("🎬 Streaming", callback_data="cat_streaming")],
         [InlineKeyboardButton("⚽ Sport", callback_data="cat_sport")],
@@ -1148,10 +1184,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔒 VPN", callback_data="cat_vpn")],
         [InlineKeyboardButton("💻 Logiciels", callback_data="cat_software")],
         [InlineKeyboardButton("📚 Éducation", callback_data="cat_education")],
-        [InlineKeyboardButton("🍎 Apple Services", callback_data="cat_apple")]  # ✅ AJOUTÉ
+        [InlineKeyboardButton("🍎 Apple Services", callback_data="cat_apple")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
+
     welcome_text = (
         "🎯 *Bienvenue sur B4U Deals !*\n\n"
         "Profite de nos offres premium à prix réduits :\n"
@@ -1163,10 +1199,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• VPN sécurisés\n"
         "• Logiciels professionnels\n"
         "• Formations\n"
-        "• Services Apple (TV + Music)\n\n"  # ✅ AJOUTÉ
+        "• Services Apple (TV + Music)\n\n"
         "Choisis une catégorie pour commencer :"
     )
-    
+
     try:
         image_url = "https://raw.githubusercontent.com/Noallo312/serveur_express_bot/refs/heads/main/514B1CC0-791F-47CA-825C-F82A4100C02E.png"
         await update.message.reply_photo(photo=image_url, caption=welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
@@ -1193,7 +1229,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard.append([InlineKeyboardButton(service_data['name'], callback_data=f"service_{service_key}")])
         keyboard.append([InlineKeyboardButton("⬅️ Retour au menu", callback_data="back_to_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
+
         category_labels = {
             'streaming': '🎬 Streaming',
             'sport': '⚽ Sport',
@@ -1203,9 +1239,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'vpn': '🔒 VPN',
             'software': '💻 Logiciels',
             'education': '📚 Éducation',
-            'apple': '🍎 Apple Services'  # ✅ AJOUTÉ
+            'apple': '🍎 Apple Services'
         }
-        
+
         await query.edit_message_caption(caption=f"*{category_labels.get(category, category)}*\n\nChoisis ton service :", parse_mode='Markdown', reply_markup=reply_markup)
         return
 
@@ -1250,7 +1286,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Gestion du paiement choisi
     if data.startswith("pay_"):
         parts = data.split("_")
-        method = parts[1].capitalize()  # paypal, virement, revolut
+        method = parts[1].capitalize()
         service_key = parts[2]
         plan_key = "_".join(parts[3:])
         state = user_states.get(user_id)
@@ -1291,13 +1327,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         finally:
             session.close()
 
-        # Instructions selon mode de paiement
         PAYPAL_EMAIL = os.getenv('PAYPAL_EMAIL', 'votre@paypal.com')
         BTC_WALLET = os.getenv('BTC_WALLET', '1A1zP1eP5QGefi2DMPTfTL5SLmv7Divf4Na')
         ETH_WALLET = os.getenv('ETH_WALLET', '0x0000000000000000000000000000000000000000')
         LTC_WALLET = os.getenv('LTC_WALLET', 'LZ1DPGnXnHMHDqBqDeBiYpNqJRB3TDsGpB')
 
-        # Récupération des taux crypto en temps réel
         try:
             import requests as _req
             resp = _req.get(
@@ -1385,7 +1419,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔒 VPN", callback_data="cat_vpn")],
             [InlineKeyboardButton("💻 Logiciels", callback_data="cat_software")],
             [InlineKeyboardButton("📚 Éducation", callback_data="cat_education")],
-            [InlineKeyboardButton("🍎 Apple Services", callback_data="cat_apple")]  # ✅ AJOUTÉ
+            [InlineKeyboardButton("🍎 Apple Services", callback_data="cat_apple")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_caption(caption="🎯 *B4U Deals*\n\nChoisis une catégorie :", parse_mode='Markdown', reply_markup=reply_markup)
@@ -1396,7 +1430,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         order_id = int(data.replace("admin_take_", ""))
         admin_id = query.from_user.id
         admin_username = query.from_user.username or f"Admin_{admin_id}"
-        
+
         session = SessionLocal()
         try:
             order = session.get(Order, order_id)
@@ -1404,20 +1438,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.answer("❌ Commande introuvable", show_alert=True)
                 session.close()
                 return
-            
+
             if order.status != 'en_attente':
                 await query.answer("❌ Commande déjà prise", show_alert=True)
                 session.close()
                 return
-            
-            # Mettre à jour la commande
+
             order.status = 'en_cours'
             order.admin_id = admin_id
             order.admin_username = admin_username
             order.taken_at = datetime.now().isoformat()
             session.commit()
-            
-            # Récupérer toutes les infos pour le nouveau message
+
             service_name = order.service
             plan_label = order.plan
             price = order.price
@@ -1428,7 +1460,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             last_name_order = order.last_name
             email_order = order.email
             payment_method_order = order.payment_method
-            
+
         except Exception as e:
             session.rollback()
             print(f"Erreur prise commande: {e}")
@@ -1437,11 +1469,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         finally:
             session.close()
-        
-        # Supprimer les notifications des autres admins
+
         delete_other_admin_notifications(order_id, admin_id)
-        
-        # Modifier le message de l'admin qui a pris - AVEC TOUTES LES INFOS
+
         taken_text = f"🔒 *COMMANDE #{order_id} — PRISE EN CHARGE*\n\n"
         if username_order:
             taken_text += f"👤 @{username_order}\n"
@@ -1460,7 +1490,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             taken_text += f"💳 {payment_method_order}\n"
         taken_text += f"\n✅ Pris en charge par @{admin_username}\n"
         taken_text += f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-        
+
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton("✅ Terminer", callback_data=f"admin_complete_{order_id}"),
@@ -1470,15 +1500,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("🔄 Remettre", callback_data=f"admin_restore_{order_id}")
             ]
         ])
-        
+
         await query.edit_message_text(text=taken_text, parse_mode='Markdown', reply_markup=keyboard)
         await query.answer("✅ Commande prise en charge")
         return
-    
-    # ========== ADMIN TERMINE LA COMMANDE ==========
+
+    # ========== ADMIN TERMINE LA COMMANDE — FIX: garde anti-double-comptage ==========
     if data.startswith("admin_complete_"):
         order_id = int(data.replace("admin_complete_", ""))
-        
+
         session = SessionLocal()
         try:
             order = session.get(Order, order_id)
@@ -1486,17 +1516,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.answer("❌ Commande introuvable", show_alert=True)
                 session.close()
                 return
-            
+
+            # FIX BUG 1: empêche le double-comptage si déjà terminée
+            if order.status == 'terminee':
+                await query.answer("⚠️ Commande déjà terminée", show_alert=True)
+                session.close()
+                return
+
             price = order.price or 0.0
             cost = order.cost or 0.0
-            
-            # Mettre à jour les stats cumulatives
+
             cs = session.get(CumulativeStats, 1)
             if cs:
                 cs.total_revenue = (cs.total_revenue or 0.0) + price
                 cs.total_profit = (cs.total_profit or 0.0) + (price - cost)
                 cs.last_updated = datetime.now().isoformat()
-            
+
             order.status = 'terminee'
             session.commit()
         except Exception as e:
@@ -1507,22 +1542,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         finally:
             session.close()
-        
-        # Modifier tous les messages admin
+
         completed_text = (
             f"✅ *COMMANDE #{order_id} — TERMINÉE*\n\n"
             f"Terminée par @{query.from_user.username or 'Admin'}\n"
             f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         )
-        
+
         edit_all_admin_notifications(order_id, completed_text)
         await query.answer("✅ Commande terminée")
         return
-    
+
     # ========== ADMIN ANNULE LA COMMANDE ==========
     if data.startswith("admin_cancel_"):
         order_id = int(data.replace("admin_cancel_", ""))
-        
+
         session = SessionLocal()
         try:
             order = session.get(Order, order_id)
@@ -1530,7 +1564,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.answer("❌ Commande introuvable", show_alert=True)
                 session.close()
                 return
-            
+
             order.status = 'annulee'
             order.cancelled_by = query.from_user.id
             order.cancelled_at = datetime.now().isoformat()
@@ -1543,22 +1577,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         finally:
             session.close()
-        
-        # Modifier tous les messages admin
+
         cancelled_text = (
             f"❌ *COMMANDE #{order_id} — ANNULÉE*\n\n"
             f"Annulée par @{query.from_user.username or 'Admin'}\n"
             f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         )
-        
+
         edit_all_admin_notifications(order_id, cancelled_text)
         await query.answer("❌ Commande annulée")
         return
-    
+
     # ========== ADMIN REMET LA COMMANDE EN LIGNE ==========
     if data.startswith("admin_restore_"):
         order_id = int(data.replace("admin_restore_", ""))
-        
+
         session = SessionLocal()
         try:
             order = session.get(Order, order_id)
@@ -1566,8 +1599,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.answer("❌ Commande introuvable", show_alert=True)
                 session.close()
                 return
-            
-            # Récupérer les infos avant de remettre en attente
+
             service_name = order.service
             plan_label = order.plan
             price = order.price
@@ -1578,14 +1610,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             last_name_order = order.last_name
             email_order = order.email
             payment_method_order = order.payment_method
-            
-            # Remettre en attente
+
             order.status = 'en_attente'
             order.admin_id = None
             order.admin_username = None
             order.taken_at = None
-            
-            # Supprimer les anciens messages admin
+
             session.query(OrderMessage).filter(OrderMessage.order_id == order_id).delete()
             session.commit()
         except Exception as e:
@@ -1596,20 +1626,19 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         finally:
             session.close()
-        
-        # Renvoyer aux admins
+
         await resend_order_to_all_admins_async(
             context, order_id, service_name, plan_label, price, cost,
             username_order, user_id_order, first_name_order, last_name_order,
             email_order, payment_method_order
         )
-        
+
         await query.answer("🔄 Commande remise en ligne")
         return
+
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     await update.message.reply_text("⚠️ Utilise /start pour commencer une commande.")
-
 
 async def handle_payment_proof(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Reçoit une photo du client → la transfère aux admins avec recap + boutons."""
@@ -1688,8 +1717,7 @@ async def handle_payment_proof(update: Update, context: ContextTypes.DEFAULT_TYP
         parse_mode='Markdown'
     )
 
-
-# ========== ROUTES FLASK
+# ========== ROUTES FLASK ==========
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -1723,8 +1751,6 @@ def users_page():
 @login_required
 def manager_page():
     return redirect('/dashboard')
-
-# ── API TOKEN (pour dashboard externe) ───────────────────────────────────────
 
 def check_token():
     token = request.args.get('token') or request.headers.get('X-Auth-Token')
@@ -1784,6 +1810,15 @@ def api_token_complete(order_id):
     try:
         o = session.get(Order, order_id)
         if not o: return jsonify({'error': 'Not found'}), 404
+        # FIX BUG 3: anti-double-comptage
+        if o.status != 'terminee':
+            price = o.price or 0.0
+            cost = o.cost or 0.0
+            cs = session.get(CumulativeStats, 1)
+            if cs:
+                cs.total_revenue = (cs.total_revenue or 0.0) + price
+                cs.total_profit = (cs.total_profit or 0.0) + (price - cost)
+                cs.last_updated = datetime.now().isoformat()
         o.status = 'terminee'
         session.commit()
         return jsonify({'success': True})
@@ -1867,6 +1902,7 @@ def api_create_service():
     load_services_from_db()
     return jsonify({'success': True})
 
+# FIX BUG 2: api_update_service reçoit et sauvegarde correctement "visible"
 @app.route('/api/services/<service_key>', methods=['PUT'])
 @login_required
 def api_update_service(service_key):
@@ -1875,6 +1911,7 @@ def api_update_service(service_key):
     emoji = data.get('emoji') or ''
     category = data.get('category') or ''
     active = bool(data.get('active', True))
+    # FIX: on lit "visible" depuis le body (le JS l'envoie maintenant)
     visible = bool(data.get('visible', True))
     session = SessionLocal()
     try:
@@ -2040,6 +2077,7 @@ def api_user_details(user_id):
         return jsonify({'orders': orders})
     finally:
         session.close()
+
 @app.route('/api/dashboard')
 @login_required
 def api_dashboard():
@@ -2109,6 +2147,7 @@ def take_order(order_id):
         print("Erreur notifications:", e)
     return jsonify({'success': True})
 
+# FIX BUG 3: complete_order Flask — anti-double-comptage
 @app.route('/api/order/<int:order_id>/complete', methods=['POST'])
 @login_required
 def complete_order(order_id):
@@ -2116,13 +2155,15 @@ def complete_order(order_id):
     try:
         o = session.get(Order, order_id)
         if o:
-            price = o.price or 0.0
-            cost = o.cost or 0.0
-            cs = session.get(CumulativeStats, 1)
-            if cs:
-                cs.total_revenue = (cs.total_revenue or 0.0) + price
-                cs.total_profit = (cs.total_profit or 0.0) + (price - cost)
-                cs.last_updated = datetime.now().isoformat()
+            # FIX: on n'ajoute aux stats QUE si la commande n'est pas déjà terminée
+            if o.status != 'terminee':
+                price = o.price or 0.0
+                cost = o.cost or 0.0
+                cs = session.get(CumulativeStats, 1)
+                if cs:
+                    cs.total_revenue = (cs.total_revenue or 0.0) + price
+                    cs.total_profit = (cs.total_profit or 0.0) + (price - cost)
+                    cs.last_updated = datetime.now().isoformat()
             o.status = 'terminee'
             session.commit()
     except Exception as e:
@@ -2183,7 +2224,7 @@ def restore_order(order_id):
         print("Erreur renvoi notifications:", e)
     return jsonify({'success': True})
 
-# ── HUB USERS (comptes dashboard) ────────────────────────────────────────────
+# ── HUB USERS (comptes dashboard) ─────────────────────────────────────────────
 import json, hashlib
 
 HUB_USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hub_users.json')
@@ -2323,7 +2364,6 @@ def api_simulate():
     finally:
         session.close()
     return jsonify({'success': True, 'created': len(created_orders), 'orders': created_orders})
-
 
 @app.route('/api/order/<int:order_id>/send_link', methods=['POST'])
 @login_required
