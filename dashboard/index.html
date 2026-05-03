@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#08090d">
+<title>B4U Deals</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & ROOT ─────────────────────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#08090d;
+  --s1:#0e1016;
+  --s2:#13151e;
+  --s3:#1a1d28;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --text:#e8eaef;
+  --text2:rgba(232,234,239,0.45);
+  --text3:rgba(232,234,239,0.25);
+  --accent:#6366f1;
+  --accent2:#8b5cf6;
+  --green:#10b981;
+  --orange:#f59e0b;
+  --red:#ef4444;
+  --blue:#3b82f6;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+html{height:100%;overflow:hidden}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  height:100%;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── LAYOUT ───────────────────────────────────────────────────────────────── */
+.app{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  height:100dvh;
+  padding-top:var(--safe-top);
+  padding-bottom:var(--safe-bot);
+}
+
+/* ── STATUS BAR SPACER ────────────────────────────────────────────────────── */
+.status-spacer{
+  height:max(var(--safe-top), 44px);
+  background:rgba(8,9,13,0.95);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  position:fixed;
+  top:0;left:0;right:0;
+  z-index:200;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+
+/* ── PAGES ────────────────────────────────────────────────────────────────── */
+.pages{
+  flex:1;
+  overflow:hidden;
+  margin-top:max(var(--safe-top), 44px);
+  margin-bottom:calc(64px + var(--safe-bot));
+}
+.page{
+  height:100%;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  display:none;
+}
+.page.active{display:block}
+
+/* ── TOP BAR ──────────────────────────────────────────────────────────────── */
+.topbar{
+  padding:20px 20px 0;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  margin-bottom:20px;
+}
+.topbar-left{}
+.page-title{
+  font-family:'Syne',sans-serif;
+  font-size:28px;
+  font-weight:800;
+  color:#fff;
+  letter-spacing:-0.5px;
+  line-height:1;
+}
+.page-sub{
+  font-size:13px;
+  color:var(--text2);
+  margin-top:4px;
+}
+.topbar-right{display:flex;gap:8px;align-items:center;padding-top:4px}
+.icon-btn{
+  width:38px;height:38px;
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  cursor:pointer;
+  transition:background .15s;
+}
+.icon-btn:active{background:var(--s3)}
+
+/* ── KPI CARDS ────────────────────────────────────────────────────────────── */
+.kpi-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  padding:0 16px;
+  margin-bottom:10px;
+}
+.kpi{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px;
+  position:relative;
+  overflow:hidden;
+}
+.kpi::before{
+  content:'';
+  position:absolute;
+  top:-30px;right:-30px;
+  width:80px;height:80px;
+  border-radius:50%;
+  opacity:0.08;
+}
+.kpi.indigo::before{background:var(--accent)}
+.kpi.purple::before{background:var(--accent2)}
+.kpi.green::before{background:var(--green)}
+.kpi.orange::before{background:var(--orange)}
+.kpi-icon{font-size:18px;margin-bottom:8px}
+.kpi-val{
+  font-family:'Syne',sans-serif;
+  font-size:22px;
+  font-weight:700;
+  color:#fff;
+  line-height:1;
+}
+.kpi.indigo .kpi-val{color:#818cf8}
+.kpi.purple .kpi-val{color:#a78bfa}
+.kpi.green .kpi-val{color:#34d399}
+.kpi.orange .kpi-val{color:#fbbf24}
+.kpi-lbl{font-size:11px;color:var(--text2);margin-top:4px;font-weight:500}
+
+/* ── SECTION HEADER ───────────────────────────────────────────────────────── */
+.sec-hdr{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px 20px 10px;
+}
+.sec-title{
+  font-family:'Syne',sans-serif;
+  font-size:15px;
+  font-weight:700;
+  color:#fff;
+}
+.sec-link{
+  font-size:12px;
+  color:var(--accent);
+  font-weight:500;
+  cursor:pointer;
+  background:none;border:none;
+}
+
+/* ── ORDER CARDS ──────────────────────────────────────────────────────────── */
+.order-list{padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.order-card{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px 16px;
+  cursor:pointer;
+  transition:all .15s;
+  position:relative;
+}
+.order-card:active{transform:scale(0.98);background:var(--s2)}
+.order-card.urgent{border-color:rgba(245,158,11,0.3)}
+.order-row1{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.order-service{font-weight:600;font-size:14px;color:#fff}
+.order-plan{font-size:11px;color:var(--text2);margin-top:2px}
+.order-price{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff;text-align:right}
+.order-price-cost{font-size:10px;color:var(--text2);text-align:right;margin-top:1px}
+.order-row2{display:flex;align-items:center;justify-content:space-between}
+.order-user{display:flex;align-items:center;gap:6px}
+.order-avatar{width:22px;height:22px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.order-username{font-size:12px;color:var(--text2)}
+.status-pill{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 9px;border-radius:20px;
+  font-size:11px;font-weight:600;
+}
+.status-pill.attente{background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.2)}
+.status-pill.cours{background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.2)}
+.status-pill.terminee{background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.2)}
+.status-pill.annulee{background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.15)}
+.order-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.order-dot.attente{background:#fbbf24}
+.order-dot.cours{background:#60a5fa}
+.order-dot.terminee{background:#34d399}
+.order-dot.annulee{background:#f87171}
+.order-time{font-size:11px;color:var(--text3)}
+
+/* ── FILTER CHIPS ─────────────────────────────────────────────────────────── */
+.filter-scroll{
+  overflow-x:auto;
+  padding:0 16px 14px;
+  display:flex;
+  gap:8px;
+  scrollbar-width:none;
+}
+.filter-scroll::-webkit-scrollbar{display:none}
+.chip{
+  flex-shrink:0;
+  padding:7px 14px;
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:20px;
+  font-size:12px;
+  font-weight:500;
+  color:var(--text2);
+  cursor:pointer;
+  white-space:nowrap;
+  transition:all .15s;
+}
+.chip.active{
+  background:rgba(99,102,241,0.15);
+  border-color:rgba(99,102,241,0.4);
+  color:#818cf8;
+}
+.chip:active{opacity:0.7}
+
+/* ── SEARCH ───────────────────────────────────────────────────────────────── */
+.search-wrap{padding:0 16px 10px}
+.search-input{
+  width:100%;
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:11px 14px 11px 38px;
+  color:var(--text);
+  font-size:14px;
+  font-family:'DM Sans',sans-serif;
+  outline:none;
+  -webkit-appearance:none;
+}
+.search-wrap{position:relative}
+.search-wrap::before{
+  content:'🔍';
+  position:absolute;
+  left:28px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:13px;
+  pointer-events:none;
+}
+
+/* ── USER CARDS ───────────────────────────────────────────────────────────── */
+.user-card{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.user-card+.user-card{margin-top:8px}
+.u-avatar{
+  width:42px;height:42px;
+  border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;
+  font-size:16px;font-weight:700;color:#fff;
+  flex-shrink:0;
+}
+.u-info{flex:1;min-width:0}
+.u-name{font-weight:600;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-handle{font-size:12px;color:var(--text2);margin-top:1px}
+.u-right{text-align:right;flex-shrink:0}
+.u-orders{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#818cf8}
+.u-orders-lbl{font-size:10px;color:var(--text3);margin-top:1px}
+
+/* ── SERVICE CARDS (Manager) ──────────────────────────────────────────────── */
+.svc-cat-title{
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:1.2px;
+  text-transform:uppercase;
+  color:var(--text3);
+  padding:14px 20px 6px;
+}
+.svc-card{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:16px;
+  margin:0 16px 8px;
+  overflow:hidden;
+}
+.svc-header{
+  display:flex;
+  align-items:center;
+  padding:13px 16px;
+  gap:10px;
+  cursor:pointer;
+}
+.svc-emoji{font-size:20px;flex-shrink:0}
+.svc-name{font-weight:600;font-size:14px;color:#fff;flex:1}
+.svc-badges{display:flex;gap:6px;align-items:center}
+.badge-sm{
+  padding:2px 7px;border-radius:6px;
+  font-size:10px;font-weight:700;
+}
+.badge-on{background:rgba(16,185,129,0.15);color:#34d399}
+.badge-off{background:rgba(239,68,68,0.12);color:#f87171}
+.badge-vis{background:rgba(99,102,241,0.12);color:#818cf8}
+.badge-hid{background:rgba(255,255,255,0.06);color:var(--text2)}
+.chevron{font-size:12px;color:var(--text3);transition:transform .2s}
+.svc-plans{border-top:1px solid var(--border);display:none}
+.svc-plans.open{display:block}
+.plan-row{
+  display:flex;
+  align-items:center;
+  padding:10px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  gap:8px;
+}
+.plan-row:last-child{border-bottom:none}
+.plan-lbl{flex:1;font-size:13px;color:var(--text);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plan-price{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.plan-margin{font-size:11px;padding:2px 6px;border-radius:6px;flex-shrink:0}
+.plan-margin.good{background:rgba(16,185,129,0.12);color:#34d399}
+.plan-margin.ok{background:rgba(245,158,11,0.12);color:#fbbf24}
+.plan-del{font-size:14px;cursor:pointer;padding:4px;color:var(--text3);flex-shrink:0}
+.svc-actions{display:flex;gap:6px;padding:10px 16px;background:rgba(255,255,255,0.02)}
+.svc-btn{
+  flex:1;padding:8px;border-radius:10px;border:1px solid;
+  font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;
+  cursor:pointer;text-align:center;
+  background:transparent;
+}
+.svc-btn.edit{border-color:rgba(99,102,241,0.3);color:#818cf8}
+.svc-btn.del{border-color:rgba(239,68,68,0.25);color:#f87171}
+.svc-btn.plan{border-color:rgba(16,185,129,0.25);color:#34d399}
+
+/* ── BOTTOM NAV ───────────────────────────────────────────────────────────── */
+.bottom-nav{
+  position:fixed;
+  bottom:0;left:0;right:0;
+  height:calc(64px + var(--safe-bot));
+  padding-bottom:var(--safe-bot);
+  background:rgba(8,9,13,0.92);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--border);
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-around;
+  z-index:100;
+  padding-top:8px;
+}
+.nav-btn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  padding:4px 16px;
+  background:none;border:none;
+  cursor:pointer;
+  flex:1;
+}
+.nav-icon{font-size:22px;transition:transform .2s}
+.nav-lbl{font-size:10px;font-weight:500;color:var(--text2);transition:color .2s;letter-spacing:0.2px}
+.nav-btn.active .nav-icon{transform:scale(1.1)}
+.nav-btn.active .nav-lbl{color:var(--accent)}
+.nav-badge{
+  position:absolute;
+  top:-4px;right:-4px;
+  width:16px;height:16px;
+  background:#ef4444;
+  border-radius:50%;
+  font-size:9px;
+  font-weight:700;
+  color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--bg);
+}
+.nav-icon-wrap{position:relative;display:inline-flex}
+
+/* ── MODAL / SHEET ────────────────────────────────────────────────────────── */
+.sheet-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  z-index:999;
+  display:none;
+  align-items:flex-end;
+  justify-content:center;
+}
+.sheet-overlay.open{display:flex}
+.sheet{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:24px 24px 0 0;
+  width:100%;
+  max-height:90vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:0 0 calc(20px + var(--safe-bot));
+  transform:translateY(100%);
+  transition:transform .35s cubic-bezier(0.32,0.72,0,1);
+}
+.sheet-overlay.open .sheet{transform:translateY(0)}
+.sheet-handle{width:36px;height:4px;background:rgba(255,255,255,0.12);border-radius:2px;margin:12px auto 0}
+.sheet-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:#fff;padding:16px 20px 0;margin-bottom:16px}
+.sheet-field{padding:0 20px;margin-bottom:14px}
+.sheet-field label{display:block;font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
+.sheet-field input,.sheet-field select{
+  width:100%;
+  background:var(--s2);
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:12px 14px;
+  border-radius:12px;
+  font-size:15px;
+  font-family:'DM Sans',sans-serif;
+  outline:none;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.sheet-field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.sheet-field select option{background:var(--s2)}
+.sheet-btns{display:flex;gap:10px;padding:20px 20px 0}
+.btn-primary{
+  flex:1;padding:15px;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  border:none;border-radius:14px;
+  color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
+  cursor:pointer;-webkit-appearance:none;
+}
+.btn-ghost{
+  padding:15px 20px;
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  color:var(--text2);
+  font-family:'DM Sans',sans-serif;font-size:14px;
+  cursor:pointer;-webkit-appearance:none;
+}
+
+/* ── ORDER DETAIL SHEET ───────────────────────────────────────────────────── */
+.detail-section{padding:0 20px;margin-bottom:16px}
+.detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.detail-row:last-child{border-bottom:none}
+.detail-key{font-size:13px;color:var(--text2)}
+.detail-val{font-size:13px;color:var(--text);font-weight:500;text-align:right;max-width:60%;word-break:break-all}
+.action-row{display:flex;gap:8px;padding:0 20px}
+.action-pill{
+  flex:1;padding:13px 8px;
+  border-radius:14px;border:1px solid;
+  font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;
+  cursor:pointer;text-align:center;background:transparent;
+  -webkit-appearance:none;
+}
+.action-pill.take{border-color:rgba(59,130,246,0.3);color:#60a5fa;background:rgba(59,130,246,0.08)}
+.action-pill.complete{border-color:rgba(16,185,129,0.3);color:#34d399;background:rgba(16,185,129,0.08)}
+.action-pill.cancel{border-color:rgba(239,68,68,0.25);color:#f87171;background:rgba(239,68,68,0.07)}
+.action-pill.restore{border-color:rgba(245,158,11,0.3);color:#fbbf24;background:rgba(245,158,11,0.08)}
+.link-send-wrap{padding:0 20px;margin-top:14px}
+.link-input{
+  width:100%;
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px 14px;
+  color:var(--text);
+  font-size:14px;
+  font-family:'DM Sans',sans-serif;
+  outline:none;
+  -webkit-appearance:none;
+  margin-bottom:10px;
+}
+.btn-send-link{
+  width:100%;padding:13px;
+  background:rgba(99,102,241,0.15);
+  border:1px solid rgba(99,102,241,0.3);
+  border-radius:12px;
+  color:#818cf8;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;-webkit-appearance:none;
+}
+
+/* ── TOAST ────────────────────────────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:calc(80px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--s3);border:1px solid var(--border2);
+  color:#fff;padding:10px 20px;border-radius:12px;
+  font-size:13px;font-weight:500;
+  z-index:9999;opacity:0;transition:all .25s;
+  white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── EMPTY STATE ──────────────────────────────────────────────────────────── */
+.empty{text-align:center;padding:48px 20px;color:var(--text2);font-size:14px}
+.empty .icon{font-size:40px;display:block;margin-bottom:12px}
+
+/* ── SCROLL PADDING ───────────────────────────────────────────────────────── */
+.page-pad{height:20px}
+
+/* ── LOADING ──────────────────────────────────────────────────────────────── */
+.loading{display:flex;align-items:center;justify-content:center;padding:32px;gap:8px;color:var(--text2);font-size:13px}
+.spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PULL INDICATOR ───────────────────────────────────────────────────────── */
+.refresh-indicator{
+  text-align:center;padding:8px;font-size:12px;color:var(--text2);
+  display:none;
+}
+
+/* ── USER KPI ROW ─────────────────────────────────────────────────────────── */
+.kpi-mini-row{display:flex;gap:8px;padding:0 16px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+.kpi-mini-row::-webkit-scrollbar{display:none}
+.kpi-mini{
+  flex-shrink:0;
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px 14px;
+  min-width:100px;
+}
+.kpi-mini-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:#fff}
+.kpi-mini-lbl{font-size:10px;color:var(--text2);margin-top:3px;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="status-spacer"></div>
+<div class="app">
+
+  <!-- ═══════════════════════════════════════════════════ PAGES -->
+  <div class="pages">
+
+    <!-- ── PAGE: DASHBOARD ─────────────────────────────────── -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub" id="dash-sub">Chargement...</div>
+        </div>
+        <div class="topbar-right">
+          <div class="icon-btn" onclick="loadAll()" id="refresh-btn">↻</div>
+        </div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi indigo">
+          <div class="kpi-icon">📦</div>
+          <div class="kpi-val" id="k-total">—</div>
+          <div class="kpi-lbl">Commandes</div>
+        </div>
+        <div class="kpi orange">
+          <div class="kpi-icon">⏳</div>
+          <div class="kpi-val" id="k-pending">—</div>
+          <div class="kpi-lbl">En attente</div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-val" id="k-revenue">—</div>
+          <div class="kpi-lbl">Chiffre d'affaires</div>
+        </div>
+        <div class="kpi purple">
+          <div class="kpi-icon">📈</div>
+          <div class="kpi-val" id="k-profit">—</div>
+          <div class="kpi-lbl">Bénéfice net</div>
+        </div>
+      </div>
+
+      <div class="sec-hdr">
+        <div class="sec-title">Commandes récentes</div>
+        <button class="sec-link" onclick="goPage('orders')">Voir tout →</button>
+      </div>
+
+      <div class="order-list" id="dash-orders">
+        <div class="loading"><div class="spin"></div>Chargement...</div>
+      </div>
+
+      <div class="page-pad"></div>
+    </div>
+
+    <!-- ── PAGE: COMMANDES ─────────────────────────────────── -->
+    <div class="page" id="page-orders">
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="page-title">Commandes</div>
+          <div class="page-sub" id="orders-sub">0 commandes</div>
+        </div>
+        <div class="topbar-right">
+          <div class="icon-btn" onclick="loadOrders()">↻</div>
+        </div>
+      </div>
+
+      <div class="filter-scroll" id="order-filters">
+        <div class="chip active" onclick="filterOrders('all',this)">Toutes</div>
+        <div class="chip" onclick="filterOrders('en_attente',this)">⏳ Attente</div>
+        <div class="chip" onclick="filterOrders('en_cours',this)">🔵 En cours</div>
+        <div class="chip" onclick="filterOrders('terminee',this)">✅ Terminées</div>
+        <div class="chip" onclick="filterOrders('annulee',this)">❌ Annulées</div>
+      </div>
+
+      <div class="search-wrap">
+        <input type="search" class="search-input" id="orders-search" placeholder="Rechercher..." oninput="renderOrders()" autocomplete="off">
+      </div>
+
+      <div class="order-list" id="orders-list">
+        <div class="loading"><div class="spin"></div>Chargement...</div>
+      </div>
+      <div class="page-pad"></div>
+    </div>
+
+    <!-- ── PAGE: UTILISATEURS ──────────────────────────────── -->
+    <div class="page" id="page-users">
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="page-title">Utilisateurs</div>
+          <div class="page-sub" id="users-sub">Chargement...</div>
+        </div>
+        <div class="topbar-right">
+          <div class="icon-btn" onclick="loadUsers()">↻</div>
+        </div>
+      </div>
+
+      <div class="kpi-mini-row">
+        <div class="kpi-mini"><div class="kpi-mini-val" id="u-total">—</div><div class="kpi-mini-lbl">👥 Total</div></div>
+        <div class="kpi-mini"><div class="kpi-mini-val" id="u-active">—</div><div class="kpi-mini-lbl">🛒 Actifs</div></div>
+        <div class="kpi-mini"><div class="kpi-mini-val" id="u-conv">—</div><div class="kpi-mini-lbl">📈 Conversion</div></div>
+        <div class="kpi-mini"><div class="kpi-mini-val" id="u-new">—</div><div class="kpi-mini-lbl">🆕 7 jours</div></div>
+      </div>
+
+      <div class="search-wrap" style="margin-bottom:10px">
+        <input type="search" class="search-input" id="users-search" placeholder="Rechercher..." oninput="renderUsers()" autocomplete="off">
+      </div>
+
+      <div style="padding:0 16px" id="users-list">
+        <div class="loading"><div class="spin"></div>Chargement...</div>
+      </div>
+      <div class="page-pad"></div>
+    </div>
+
+    <!-- ── PAGE: SERVICES ──────────────────────────────────── -->
+    <div class="page" id="page-services">
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="page-title">Services</div>
+          <div class="page-sub">Catalogue produits</div>
+        </div>
+        <div class="topbar-right">
+          <div class="icon-btn" onclick="openAddService()">＋</div>
+          <div class="icon-btn" onclick="loadServices()">↻</div>
+        </div>
+      </div>
+
+      <div id="services-content">
+        <div class="loading"><div class="spin"></div>Chargement...</div>
+      </div>
+      <div class="page-pad"></div>
+    </div>
+
+  </div><!-- /pages -->
+
+  <!-- ═══════════════════════════════════════════════════ BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-page="dashboard" onclick="goPage('dashboard')">
+      <span class="nav-icon-wrap"><span class="nav-icon">📊</span></span>
+      <span class="nav-lbl">Dashboard</span>
+    </button>
+    <button class="nav-btn" data-page="orders" onclick="goPage('orders')">
+      <span class="nav-icon-wrap">
+        <span class="nav-icon">📦</span>
+        <span class="nav-badge" id="pending-badge" style="display:none"></span>
+      </span>
+      <span class="nav-lbl">Commandes</span>
+    </button>
+    <button class="nav-btn" data-page="users" onclick="goPage('users')">
+      <span class="nav-icon-wrap"><span class="nav-icon">👥</span></span>
+      <span class="nav-lbl">Clients</span>
+    </button>
+    <button class="nav-btn" data-page="services" onclick="goPage('services')">
+      <span class="nav-icon-wrap"><span class="nav-icon">🎛️</span></span>
+      <span class="nav-lbl">Services</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ ORDER DETAIL SHEET -->
+<div class="sheet-overlay" id="order-sheet-overlay" onclick="if(event.target===this)closeOrderSheet()">
+  <div class="sheet" id="order-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheet-order-title">Commande #—</div>
+    <div id="sheet-order-body"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ GENERIC MODAL SHEET -->
+<div class="sheet-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="sheet" id="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─────────────────────────────────────────────────────── STATE */
+let allOrders = [];
+let allUsers = [];
+let currentOrderFilter = 'all';
+let currentOrderDetail = null;
+
+/* ─────────────────────────────────────────────────────── NAVIGATION */
+function goPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'orders') loadOrders();
+  if (page === 'users') loadUsers();
+  if (page === 'services') loadServices();
+}
+
+/* ─────────────────────────────────────────────────────── TOAST */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ─────────────────────────────────────────────────────── FETCH HELPERS */
+async function apiFetch(url, opts={}) {
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+/* ─────────────────────────────────────────────────────── DASHBOARD */
+async function loadDashboard() {
+  const d = await apiFetch('/api/dashboard');
+  allOrders = d.orders;
+  document.getElementById('k-total').textContent = d.stats.total_orders;
+  document.getElementById('k-pending').textContent = d.stats.pending_orders;
+  document.getElementById('k-revenue').textContent = d.stats.revenue.toFixed(0) + '€';
+  document.getElementById('k-profit').textContent = d.stats.profit.toFixed(0) + '€';
+  document.getElementById('dash-sub').textContent = `${d.stats.pending_orders} en attente · ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
+
+  // Badge pending
+  const badge = document.getElementById('pending-badge');
+  if (d.stats.pending_orders > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = d.stats.pending_orders > 9 ? '9+' : d.stats.pending_orders;
+  } else {
+    badge.style.display = 'none';
+  }
+
+  const recent = d.orders.slice(0, 8);
+  const el = document.getElementById('dash-orders');
+  if (!recent.length) {
+    el.innerHTML = '<div class="empty"><span class="icon">📭</span>Aucune commande</div>';
+    return;
+  }
+  el.innerHTML = recent.map(o => orderCard(o)).join('');
+}
+
+/* ─────────────────────────────────────────────────────── ORDERS */
+async function loadOrders() {
+  document.getElementById('orders-list').innerHTML = '<div class="loading"><div class="spin"></div>Chargement...</div>';
+  const d = await apiFetch('/api/dashboard');
+  allOrders = d.orders;
+  document.getElementById('orders-sub').textContent = d.orders.length + ' commandes';
+  renderOrders();
+}
+
+function filterOrders(f, btn) {
+  currentOrderFilter = f;
+  document.querySelectorAll('#order-filters .chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderOrders();
+}
+
+function renderOrders() {
+  const q = (document.getElementById('orders-search')?.value || '').toLowerCase();
+  let list = allOrders.filter(o => currentOrderFilter === 'all' || o.status === currentOrderFilter);
+  if (q) list = list.filter(o => JSON.stringify(o).toLowerCase().includes(q));
+  const el = document.getElementById('orders-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><span class="icon">🔍</span>Aucun résultat</div>';
+    return;
+  }
+  el.innerHTML = list.map(o => orderCard(o)).join('');
+}
+
+function orderCard(o) {
+  const statusMap = {en_attente:'attente',en_cours:'cours',terminee:'terminee',annulee:'annulee'};
+  const statusLbl = {en_attente:'Attente',en_cours:'En cours',terminee:'Terminée',annulee:'Annulée'};
+  const cls = statusMap[o.status] || '';
+  const initials = ((o.first_name||'?')[0] + (o.last_name||'')[0]).toUpperCase();
+  const urgent = o.status === 'en_attente' ? ' urgent' : '';
+  const margin = o.price && o.cost ? ((o.price - o.cost) / o.price * 100).toFixed(0) + '%' : '';
+  return `<div class="order-card${urgent}" onclick="openOrderDetail(${o.id})">
+    <div class="order-row1">
+      <div>
+        <div class="order-service">${o.service}</div>
+        <div class="order-plan">${o.plan || ''}</div>
+      </div>
+      <div>
+        <div class="order-price">${o.price}€</div>
+        <div class="order-price-cost">${o.cost ? 'marge ' + margin : ''}</div>
+      </div>
+    </div>
+    <div class="order-row2">
+      <div class="order-user">
+        <div class="order-avatar">${initials}</div>
+        <span class="order-username">@${o.username || 'N/A'}</span>
+      </div>
+      <span class="status-pill ${cls}"><span class="order-dot ${cls}"></span>${statusLbl[o.status]||o.status}</span>
+    </div>
+  </div>`;
+}
+
+/* ─────────────────────────────────────────────────────── ORDER DETAIL */
+function openOrderDetail(id) {
+  const o = allOrders.find(x => x.id === id);
+  if (!o) return;
+  currentOrderDetail = o;
+
+  document.getElementById('sheet-order-title').textContent = `Commande #${o.id}`;
+  const statusMap = {en_attente:'attente',en_cours:'cours',terminee:'terminee',annulee:'annulee'};
+  const statusLbl = {en_attente:'⏳ Attente',en_cours:'🔵 En cours',terminee:'✅ Terminée',annulee:'❌ Annulée'};
+  const cls = statusMap[o.status] || '';
+
+  let actions = '';
+  if (o.status === 'en_attente') actions += `<button class="action-pill take" onclick="orderAction(${o.id},'take')">✋ Prendre</button>`;
+  if (o.status === 'en_cours') actions += `<button class="action-pill complete" onclick="orderAction(${o.id},'complete')">✅ Terminer</button>`;
+  if (o.status !== 'annulee') actions += `<button class="action-pill cancel" onclick="orderAction(${o.id},'cancel')">❌ Annuler</button>`;
+  if (o.status === 'annulee' || o.status === 'terminee') actions += `<button class="action-pill restore" onclick="orderAction(${o.id},'restore')">↩️ Remettre</button>`;
+
+  document.getElementById('sheet-order-body').innerHTML = `
+    <div class="detail-section">
+      <div class="detail-row"><span class="detail-key">Statut</span><span class="status-pill ${cls}">${statusLbl[o.status]||o.status}</span></div>
+      <div class="detail-row"><span class="detail-key">Service</span><span class="detail-val">${o.service}</span></div>
+      <div class="detail-row"><span class="detail-key">Plan</span><span class="detail-val">${o.plan||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">Prix</span><span class="detail-val" style="color:#34d399;font-family:Syne,sans-serif;font-weight:700">${o.price}€</span></div>
+      <div class="detail-row"><span class="detail-key">Coût</span><span class="detail-val">${o.cost||0}€</span></div>
+      <div class="detail-row"><span class="detail-key">Client</span><span class="detail-val">${o.first_name||''} ${o.last_name||''}</span></div>
+      <div class="detail-row"><span class="detail-key">Telegram</span><span class="detail-val">@${o.username||'N/A'}</span></div>
+      <div class="detail-row"><span class="detail-key">Email</span><span class="detail-val">${o.email||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">Paiement</span><span class="detail-val">${o.payment_method||'—'}</span></div>
+    </div>
+    <div class="action-row">${actions}</div>
+    <div class="link-send-wrap">
+      <input type="text" class="link-input" id="link-input-${o.id}" placeholder="🔗 Lien à envoyer au client...">
+      <button class="btn-send-link" onclick="sendLink(${o.id})">📨 Envoyer le lien</button>
+    </div>
+  `;
+
+  document.getElementById('order-sheet-overlay').classList.add('open');
+}
+
+function closeOrderSheet() {
+  document.getElementById('order-sheet-overlay').classList.remove('open');
+}
+
+async function orderAction(id, action) {
+  closeOrderSheet();
+  await apiFetch(`/api/order/${id}/${action}`, {method:'POST'});
+  showToast(action === 'take' ? '✋ Commande prise' : action === 'complete' ? '✅ Terminée' : action === 'cancel' ? '❌ Annulée' : '↩️ Remise en ligne');
+  loadAll();
+}
+
+async function sendLink(id) {
+  const link = document.getElementById(`link-input-${id}`).value.trim();
+  if (!link) return;
+  await apiFetch(`/api/order/${id}/send_link`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({link})});
+  showToast('📨 Lien envoyé !');
+  closeOrderSheet();
+}
+
+/* ─────────────────────────────────────────────────────── USERS */
+async function loadUsers() {
+  document.getElementById('users-list').innerHTML = '<div class="loading"><div class="spin"></div>Chargement...</div>';
+  const d = await apiFetch('/api/users');
+  allUsers = d.users;
+  document.getElementById('users-sub').textContent = d.stats.total_users + ' utilisateurs';
+  document.getElementById('u-total').textContent = d.stats.total_users;
+  document.getElementById('u-active').textContent = d.stats.active_users;
+  document.getElementById('u-conv').textContent = d.stats.conversion_rate + '%';
+  document.getElementById('u-new').textContent = d.stats.new_users;
+  renderUsers();
+}
+
+function renderUsers() {
+  const q = (document.getElementById('users-search')?.value || '').toLowerCase();
+  let list = allUsers;
+  if (q) list = list.filter(u => JSON.stringify(u).toLowerCase().includes(q));
+  const el = document.getElementById('users-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><span class="icon">👤</span>Aucun utilisateur</div>';
+    return;
+  }
+  el.innerHTML = list.map(u => {
+    const initials = ((u.first_name||'?')[0] + (u.last_name||'')[0]).toUpperCase();
+    return `<div class="user-card">
+      <div class="u-avatar">${initials}</div>
+      <div class="u-info">
+        <div class="u-name">${u.first_name} ${u.last_name}</div>
+        <div class="u-handle">@${u.username}</div>
+      </div>
+      <div class="u-right">
+        <div class="u-orders">${u.total_orders}</div>
+        <div class="u-orders-lbl">commandes</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────────────── SERVICES */
+async function loadServices() {
+  document.getElementById('services-content').innerHTML = '<div class="loading"><div class="spin"></div>Chargement...</div>';
+  const d = await apiFetch('/api/services');
+  const catLabels = {streaming:'🎬 Streaming',sport:'⚽ Sport',music:'🎧 Musique',ai:'🤖 IA',fitness:'🏋️ Fitness',vpn:'🔒 VPN',software:'💻 Logiciels',education:'📚 Éducation',apple:'🍎 Apple'};
+  const byCat = {};
+  d.services.forEach(s => {
+    const c = s.category || 'other';
+    if (!byCat[c]) byCat[c] = [];
+    byCat[c].push(s);
+  });
+  let html = '';
+  for (const [cat, svcs] of Object.entries(byCat)) {
+    html += `<div class="svc-cat-title">${catLabels[cat]||cat}</div>`;
+    svcs.forEach(s => {
+      const plansHtml = s.plans.map(p => {
+        const margin = p.price ? ((p.price - p.cost) / p.price * 100).toFixed(0) : 0;
+        const mcls = margin >= 60 ? 'good' : 'ok';
+        return `<div class="plan-row">
+          <div class="plan-lbl">${p.label}</div>
+          <div class="plan-price">${p.price}€</div>
+          <div class="plan-margin ${mcls}">${margin}%</div>
+          <div class="plan-del" onclick="deletePlan('${s.service_key}','${p.plan_key}')">✕</div>
+        </div>`;
+      }).join('');
+      html += `<div class="svc-card">
+        <div class="svc-header" onclick="toggleSvc(this)">
+          <span class="svc-emoji">${s.emoji}</span>
+          <span class="svc-name">${s.display_name}</span>
+          <div class="svc-badges">
+            <span class="badge-sm ${s.active?'badge-on':'badge-off'}">${s.active?'ON':'OFF'}</span>
+            <span class="badge-sm ${s.visible?'badge-vis':'badge-hid'}">${s.visible?'VIS':'HID'}</span>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+        ${s.plans.length ? `<div class="svc-plans">${plansHtml}</div>` : ''}
+        <div class="svc-plans svc-actions-wrap" style="display:none">
+          <div class="svc-actions">
+            <button class="svc-btn edit" onclick='editService(${JSON.stringify(s)})'>✏️ Modifier</button>
+            <button class="svc-btn plan" onclick="openAddPlan('${s.service_key}')">+ Plan</button>
+            <button class="svc-btn del" onclick="deleteSvc('${s.service_key}')">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  document.getElementById('services-content').innerHTML = html;
+}
+
+function toggleSvc(header) {
+  const card = header.closest('.svc-card');
+  const plans = card.querySelector('.svc-plans:not(.svc-actions-wrap)');
+  const actions = card.querySelector('.svc-actions-wrap');
+  const chevron = header.querySelector('.chevron');
+  const isOpen = plans && plans.classList.contains('open');
+  if (plans) plans.classList.toggle('open', !isOpen);
+  if (actions) actions.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+/* ─────────────────────────────────────────────────────── MODAL */
+function openModal(html) {
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function openAddService() {
+  openModal(`
+    <div class="sheet-title">➕ Nouveau service</div>
+    <div class="sheet-field"><label>Clé (ex: netflix)</label><input id="m-key" placeholder="netflix"></div>
+    <div class="sheet-field"><label>Emoji</label><input id="m-emoji" placeholder="🎬"></div>
+    <div class="sheet-field"><label>Nom</label><input id="m-name" placeholder="Netflix"></div>
+    <div class="sheet-field"><label>Catégorie</label>
+      <select id="m-cat"><option value="streaming">streaming</option><option value="sport">sport</option><option value="music">music</option><option value="ai">ai</option><option value="fitness">fitness</option><option value="vpn">vpn</option><option value="software">software</option><option value="education">education</option><option value="apple">apple</option></select>
+    </div>
+    <div class="sheet-btns">
+      <button class="btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" onclick="createService()">Créer</button>
+    </div>
+  `);
+}
+
+async function createService() {
+  await apiFetch('/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({service_key:document.getElementById('m-key').value,emoji:document.getElementById('m-emoji').value,display_name:document.getElementById('m-name').value,category:document.getElementById('m-cat').value,active:true,visible:true})});
+  closeModal(); loadServices(); showToast('✅ Service créé');
+}
+
+function editService(s) {
+  openModal(`
+    <div class="sheet-title">✏️ ${s.emoji} ${s.display_name}</div>
+    <div class="sheet-field"><label>Emoji</label><input id="m-emoji" value="${s.emoji}"></div>
+    <div class="sheet-field"><label>Nom</label><input id="m-name" value="${s.display_name}"></div>
+    <div class="sheet-field"><label>Catégorie</label>
+      <select id="m-cat">
+        ${['streaming','sport','music','ai','fitness','vpn','software','education','apple'].map(c=>`<option value="${c}" ${s.category===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="sheet-field"><label>Actif</label>
+      <select id="m-active"><option value="1" ${s.active?'selected':''}>Oui</option><option value="0" ${!s.active?'selected':''}>Non</option></select>
+    </div>
+    <div class="sheet-field"><label>Visible (Telegram)</label>
+      <select id="m-visible"><option value="1" ${s.visible?'selected':''}>Oui</option><option value="0" ${!s.visible?'selected':''}>Non</option></select>
+    </div>
+    <div class="sheet-btns">
+      <button class="btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" onclick="updateService('${s.service_key}')">Sauvegarder</button>
+    </div>
+  `);
+}
+
+async function updateService(key) {
+  await apiFetch('/api/services/'+key,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji:document.getElementById('m-emoji').value,display_name:document.getElementById('m-name').value,category:document.getElementById('m-cat').value,active:document.getElementById('m-active').value==='1',visible:document.getElementById('m-visible').value==='1'})});
+  closeModal(); loadServices(); showToast('✅ Modifié');
+}
+
+async function deleteSvc(key) {
+  if (!confirm('Supprimer ce service ?')) return;
+  await apiFetch('/api/services/'+key,{method:'DELETE'});
+  loadServices(); showToast('🗑️ Supprimé');
+}
+
+function openAddPlan(serviceKey) {
+  openModal(`
+    <div class="sheet-title">➕ Ajouter un plan</div>
+    <div class="sheet-field"><label>Clé (ex: standard)</label><input id="p-key" placeholder="standard"></div>
+    <div class="sheet-field"><label>Label</label><input id="p-label" placeholder="Netflix Premium"></div>
+    <div class="sheet-field"><label>Prix (€)</label><input id="p-price" type="number" step="0.01" placeholder="9.00"></div>
+    <div class="sheet-field"><label>Coût (€)</label><input id="p-cost" type="number" step="0.01" placeholder="1.50"></div>
+    <div class="sheet-btns">
+      <button class="btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" onclick="createPlan('${serviceKey}')">Ajouter</button>
+    </div>
+  `);
+}
+
+async function createPlan(key) {
+  await apiFetch('/api/services/'+key+'/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan_key:document.getElementById('p-key').value,label:document.getElementById('p-label').value,price:parseFloat(document.getElementById('p-price').value),cost:parseFloat(document.getElementById('p-cost').value)})});
+  closeModal(); loadServices(); showToast('✅ Plan ajouté');
+}
+
+async function deletePlan(sKey, pKey) {
+  if (!confirm('Supprimer ce plan ?')) return;
+  await apiFetch('/api/services/'+sKey+'/plans/'+pKey,{method:'DELETE'});
+  loadServices(); showToast('🗑️ Plan supprimé');
+}
+
+/* ─────────────────────────────────────────────────────── GLOBAL */
+function loadAll() {
+  loadDashboard();
+  const activePage = document.querySelector('.page.active').id;
+  if (activePage === 'page-orders') loadOrders();
+  if (activePage === 'page-users') loadUsers();
+}
+
+// Init
+loadDashboard();
+// Auto-refresh every 25s
+setInterval(loadAll, 25000);
+</script>
+</body>
+</html>
